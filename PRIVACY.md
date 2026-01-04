@@ -1,4 +1,4 @@
-# Privacy Policy for New Tab Countdown
+# Privacy Policy for Every Second Counts
 
 **Last updated:** January 4, 2026
 

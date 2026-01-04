@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "New Tab Countdown",
+  "name": "Every Second Counts",
   "version": "1.0.0",
   "description": "Replaces new tab with a live countdown to a target date/time.",
   "icons": {

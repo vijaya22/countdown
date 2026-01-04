@@ -1,4 +1,4 @@
-# New Tab Countdown
+# Every Second Counts
 
 A minimal Chrome extension that replaces your new tab page with a countdown timer.
 
