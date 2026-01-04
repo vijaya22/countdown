@@ -4,7 +4,7 @@
 
 ## Overview
 
-New Tab Countdown is a browser extension that displays a countdown timer on your new tab page.
+Every Second Counts is a browser extension that displays a countdown timer on your new tab page.
 
 ## Data Collection
 
