@@ -12,8 +12,6 @@ const soundToggle = $("soundToggle");
 const saveBtn = $("saveBtn");
 const cancelBtn = $("cancelBtn");
 
-let soundPlayed = false;
-
 // Default target (if user never sets one).
 // IMPORTANT: This is interpreted as LOCAL time.
 const DEFAULT_TARGET_ISO_LOCAL = "2026-01-31T23:59";
@@ -54,6 +52,15 @@ async function setSoundEnabled(val) {
   await chrome.storage.sync.set({ soundEnabled: val });
 }
 
+async function getSoundPlayedFor() {
+  const { soundPlayedFor = null } = await chrome.storage.sync.get({ soundPlayedFor: null });
+  return soundPlayedFor;
+}
+
+async function setSoundPlayedFor(targetIso) {
+  await chrome.storage.sync.set({ soundPlayedFor: targetIso });
+}
+
 function playAlertSound() {
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -86,7 +93,7 @@ function isoLocalToDate(isoLocal) {
   return new Date(y, m - 1, d, hh, mm, 0, 0);
 }
 
-function updateCountdown(targetDate, soundEnabled) {
+async function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor) {
   const now = new Date();
   const diffMs = targetDate - now;
 
@@ -96,14 +103,13 @@ function updateCountdown(targetDate, soundEnabled) {
     ss.textContent = "00";
     statusText.textContent = "✅ Time's up!";
 
-    if (soundEnabled && !soundPlayed) {
+    if (soundEnabled && soundPlayedFor !== isoLocal) {
       playAlertSound();
-      soundPlayed = true;
+      await setSoundPlayedFor(isoLocal);
     }
     return;
   }
 
-  soundPlayed = false;
   statusText.textContent = "";
 
   const totalSeconds = Math.floor(diffMs / 1000);
@@ -130,12 +136,21 @@ async function init() {
   let isoLocal = await getTargetIsoLocal();
   let targetDate = isoLocalToDate(isoLocal);
   let soundEnabled = await getSoundEnabled();
+  let soundPlayedFor = await getSoundPlayedFor();
 
   targetText.textContent = `Target: ${formatLocal(targetDate)}`;
 
   // Tick
-  updateCountdown(targetDate, soundEnabled);
-  setInterval(() => updateCountdown(targetDate, soundEnabled), 250);
+  const tick = () => {
+    updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor).then(() => {
+      // Update local var after sound plays
+      if (soundPlayedFor !== isoLocal) {
+        getSoundPlayedFor().then(val => soundPlayedFor = val);
+      }
+    });
+  };
+  tick();
+  setInterval(tick, 250);
 
   // Settings - click target text to open modal
   targetText.addEventListener("click", () => {
@@ -156,10 +171,8 @@ async function init() {
 
     targetDate = isoLocalToDate(isoLocal);
     targetText.textContent = `Target: ${formatLocal(targetDate)}`;
-    soundPlayed = false;
 
     closeModal();
-    updateCountdown(targetDate, soundEnabled);
   });
 
   // Close modal on backdrop click
