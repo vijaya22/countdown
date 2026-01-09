@@ -27,6 +27,8 @@ Find it [here](https://chromewebstore.google.com/detail/every-second-counts/dbpm
 - Set your desired target date and time
 - Click "Save"
 
+## testing
+
 ## Privacy
 
 This extension stores only your target date locally using Chrome's storage API. No data is collected or transmitted. See [PRIVACY.md](PRIVACY.md) for details.
@@ -34,3 +36,4 @@ This extension stores only your target date locally using Chrome's storage API. 
 ## License
 
 [MIT](LICENSE)
+
