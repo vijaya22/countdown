@@ -6,14 +6,16 @@ const ss = $("ss");
 const targetText = $("targetText");
 const statusText = $("statusText");
 
-const modal = $("modal");
+// Date modal elements
+const dateModal = $("dateModal");
 const dtInput = $("dtInput");
+
+// Settings modal elements
+const settingsModal = $("settingsModal");
+const settingsBtn = $("settingsBtn");
 const soundToggle = $("soundToggle");
-const saveBtn = $("saveBtn");
-const cancelBtn = $("cancelBtn");
 
 // Default target (if user never sets one).
-// IMPORTANT: This is interpreted as LOCAL time.
 const DEFAULT_TARGET_ISO_LOCAL = "2026-01-31T23:59";
 
 function pad2(n) {
@@ -21,7 +23,6 @@ function pad2(n) {
 }
 
 function formatLocal(dt) {
-  // Nice readable local format
   return dt.toLocaleString(undefined, {
     weekday: "short",
     year: "numeric",
@@ -64,7 +65,6 @@ async function setSoundPlayedFor(targetIso) {
 function playAlertSound() {
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  // Play two beeps
   [0, 0.2].forEach((delay) => {
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
@@ -84,9 +84,6 @@ function playAlertSound() {
 }
 
 function isoLocalToDate(isoLocal) {
-  // isoLocal like "2026-01-31T23:59"
-  // new Date("...") treats this as local in modern browsers for datetime-local style strings.
-  // To be safe, parse manually:
   const [datePart, timePart] = isoLocal.split("T");
   const [y, m, d] = datePart.split("-").map(Number);
   const [hh, mm] = timePart.split(":").map(Number);
@@ -117,19 +114,17 @@ async function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFo
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
-  hh.textContent = pad2(hours);   // hours can exceed 99; still shows properly
+  hh.textContent = pad2(hours);
   mm.textContent = pad2(minutes);
   ss.textContent = pad2(seconds);
 }
 
-function openModal(currentIsoLocal) {
-  dtInput.value = currentIsoLocal;
-  modal.classList.remove("hidden");
-  dtInput.focus();
+function closeDateModal() {
+  dateModal.classList.add("hidden");
 }
 
-function closeModal() {
-  modal.classList.add("hidden");
+function closeSettingsModal() {
+  settingsModal.classList.add("hidden");
 }
 
 async function init() {
@@ -143,7 +138,6 @@ async function init() {
   // Tick
   const tick = () => {
     updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor).then(() => {
-      // Update local var after sound plays
       if (soundPlayedFor !== isoLocal) {
         getSoundPlayedFor().then(val => soundPlayedFor = val);
       }
@@ -152,37 +146,53 @@ async function init() {
   tick();
   setInterval(tick, 250);
 
-  // Settings - click target text to open modal
+  // Date modal - click target text to open
   targetText.addEventListener("click", () => {
-    openModal(isoLocal);
-    soundToggle.checked = soundEnabled;
+    dtInput.value = isoLocal;
+    dateModal.classList.remove("hidden");
+    dtInput.focus();
   });
-  cancelBtn.addEventListener("click", closeModal);
 
-  saveBtn.addEventListener("click", async () => {
+  // Auto-save date on change
+  dtInput.addEventListener("change", async () => {
     const val = dtInput.value?.trim();
     if (!val) return;
 
     isoLocal = val;
-    soundEnabled = soundToggle.checked;
-
     await setTargetIsoLocal(isoLocal);
-    await setSoundEnabled(soundEnabled);
 
     targetDate = isoLocalToDate(isoLocal);
     targetText.textContent = `Target: ${formatLocal(targetDate)}`;
 
-    closeModal();
+    closeDateModal();
   });
 
-  // Close modal on backdrop click
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeModal();
+  dateModal.addEventListener("click", (e) => {
+    if (e.target === dateModal) closeDateModal();
   });
 
-  // Escape to close
+  // Settings modal - click gear icon to open
+  settingsBtn.addEventListener("click", () => {
+    soundToggle.checked = soundEnabled;
+    settingsModal.classList.remove("hidden");
+  });
+
+  // Auto-save sound toggle on change
+  soundToggle.addEventListener("change", async () => {
+    soundEnabled = soundToggle.checked;
+    await setSoundEnabled(soundEnabled);
+  });
+
+  settingsModal.addEventListener("click", (e) => {
+    if (e.target === settingsModal) closeSettingsModal();
+  });
+
+  // Escape to close any open modal
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
+    if (e.key === "Escape") {
+      if (!dateModal.classList.contains("hidden")) closeDateModal();
+      if (!settingsModal.classList.contains("hidden")) closeSettingsModal();
+    }
   });
 }
 

@@ -11,9 +11,8 @@ ntp-app,
 :root {
   --bg: #f5f5f3;
   --text: #1a1a1a;
-  --muted: #666;
-  --border: #ddd;
-  --accent: #333;
+  --muted: #888;
+  --border: #e0e0e0;
 }
 
 * { box-sizing: border-box; }
@@ -31,6 +30,24 @@ body {
   display: grid;
   place-items: center;
   padding: 24px;
+  position: relative;
+}
+
+.settings-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: color 0.15s ease;
+}
+
+.settings-btn:hover {
+  color: var(--text);
 }
 
 .stage {
@@ -74,6 +91,7 @@ body {
 }
 
 .targetText {
+  margin-bottom: 4px;
   cursor: pointer;
   transition: color 0.15s ease;
 }
@@ -92,37 +110,37 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.2);
   padding: 20px;
+}
+
+#settingsModal {
+  place-items: end;
+  padding: 60px 20px 20px 20px;
 }
 
 .hidden { display: none; }
 
 .card {
-  width: min(400px, 90vw);
-  border-radius: 8px;
-  padding: 24px;
-  background: #fff;
+  width: min(320px, 90vw);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--bg);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .cardTitle {
   font-weight: 600;
+  font-size: 14px;
   margin-bottom: 16px;
-}
-
-.label {
-  display: block;
-  margin: 12px 0 6px;
-  color: var(--muted);
-  font-size: 13px;
+  color: var(--text);
 }
 
 .input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 6px;
+  padding: 12px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: #fff;
   color: var(--text);
@@ -131,57 +149,63 @@ body {
 
 .input:focus {
   outline: none;
-  border-color: var(--accent);
-}
-
-.row {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
-
-.btn {
-  border: 1px solid var(--border);
-  background: #fff;
-  color: var(--text);
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.btn:hover {
-  background: var(--bg);
-}
-
-.btn.primary {
-  background: var(--text);
-  color: var(--bg);
   border-color: var(--text);
 }
 
-.btn.primary:hover {
-  background: var(--accent);
-}
-
-.hint {
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.checkbox-row {
+/* Toggle row */
+.toggle-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 16px;
+  justify-content: space-between;
   font-size: 14px;
   cursor: pointer;
 }
 
-.checkbox-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+/* Toggle switch */
+.toggle {
+  appearance: none;
+  width: 44px;
+  height: 24px;
+  background: var(--border);
+  border-radius: 12px;
+  position: relative;
   cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toggle::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggle:checked {
+  background: var(--text);
+}
+
+.toggle:checked::before {
+  transform: translateX(20px);
+}
+
+/* Coffee link */
+.coffee-link {
+  display: block;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.coffee-link:hover {
+  color: var(--text);
 }

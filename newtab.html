@@ -8,6 +8,13 @@
   </head>
   <body>
     <main class="wrap">
+        <button id="settingsBtn" class="settings-btn" aria-label="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+
         <div class="stage">
           <div class="timer" aria-live="polite">
             <span class="time" id="hh">00</span><span class="sep">:</span>
@@ -23,27 +30,27 @@
           </div>
         </div>
 
-      <!-- Simple settings modal -->
-      <section id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <!-- Date picker modal -->
+      <section id="dateModal" class="modal hidden" role="dialog" aria-modal="true">
         <div class="card">
-          <div class="cardTitle">Set target date & time</div>
-
-          <label class="label">Target (your local time)</label>
+          <div class="cardTitle">Set target date</div>
           <input id="dtInput" type="datetime-local" class="input" />
+        </div>
+      </section>
 
-          <label class="checkbox-row">
-            <input id="soundToggle" type="checkbox" />
-            <span>Play sound when time's up</span>
+      <!-- Settings modal -->
+      <section id="settingsModal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="card">
+          <div class="cardTitle">Settings</div>
+
+          <label class="toggle-row">
+            <span>Sound alert</span>
+            <input id="soundToggle" type="checkbox" class="toggle" />
           </label>
 
-          <div class="row">
-            <button id="saveBtn" class="btn primary">Save</button>
-            <button id="cancelBtn" class="btn">Cancel</button>
-          </div>
-
-          <div class="hint">
-            Tip: You can set it once and it stays saved.
-          </div>
+          <a href="https://buymeacoffee.com/vijaya.laxmi" target="_blank" class="coffee-link">
+            ☕ Buy me a coffee
+          </a>
         </div>
       </section>
     </main>
