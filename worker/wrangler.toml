@@ -1,0 +1,7 @@
+name = "countdown"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "COUNTDOWNS"
+id = "e521e6f0399340bf8f4d59c5724fe4f3"
