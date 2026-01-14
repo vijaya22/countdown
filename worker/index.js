@@ -32,6 +32,16 @@ function renderPage(countdown) {
       --bg: #f5f5f3;
       --text: #1a1a1a;
       --muted: #888;
+      --border: #e0e0e0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --text: #f5f5f3;
+        --muted: #888;
+        --border: #333;
+        color-scheme: dark;
+      }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }

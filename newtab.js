@@ -28,6 +28,7 @@ const dtInput = $("dtInput");
 const settingsModal = $("settingsModal");
 const settingsBtn = $("settingsBtn");
 const soundToggle = $("soundToggle");
+const darkModeToggle = $("darkModeToggle");
 const shareBtn = $("shareBtn");
 const shareStatus = $("shareStatus");
 
@@ -129,6 +130,36 @@ async function getSoundPlayedFor() {
  */
 async function setSoundPlayedFor(targetIso) {
   await chrome.storage.sync.set({ soundPlayedFor: targetIso });
+}
+
+/**
+ * Gets dark mode preference from storage
+ * Falls back to system preference if not set
+ * @returns {Promise<boolean>} Whether dark mode is enabled
+ */
+async function getDarkMode() {
+  const { darkMode = null } = await chrome.storage.sync.get({ darkMode: null });
+  // If user hasn't set preference, use system preference
+  if (darkMode === null) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  return darkMode;
+}
+
+/**
+ * Saves dark mode preference to storage
+ * @param {boolean} val - Dark mode enabled state
+ */
+async function setDarkMode(val) {
+  await chrome.storage.sync.set({ darkMode: val });
+}
+
+/**
+ * Applies theme to the document
+ * @param {boolean} isDark - Whether to apply dark theme
+ */
+function applyTheme(isDark) {
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
 }
 
 /**
@@ -236,6 +267,10 @@ async function init() {
   let targetDate = isoLocalToDate(isoLocal);
   let soundEnabled = await getSoundEnabled();
   let soundPlayedFor = await getSoundPlayedFor();
+  let darkMode = await getDarkMode();
+
+  // Apply theme immediately
+  applyTheme(darkMode);
 
   // Display target date
   targetText.textContent = `Target: ${formatLocal(targetDate)}`;
@@ -286,6 +321,7 @@ async function init() {
   // Open settings modal
   settingsBtn.addEventListener("click", () => {
     soundToggle.checked = soundEnabled;
+    darkModeToggle.checked = darkMode;
     settingsModal.classList.remove("hidden");
   });
 
@@ -293,6 +329,13 @@ async function init() {
   soundToggle.addEventListener("change", async () => {
     soundEnabled = soundToggle.checked;
     await setSoundEnabled(soundEnabled);
+  });
+
+  // Auto-save dark mode toggle
+  darkModeToggle.addEventListener("change", async () => {
+    darkMode = darkModeToggle.checked;
+    await setDarkMode(darkMode);
+    applyTheme(darkMode);
   });
 
   // ---------------------------------------------------------------------------
