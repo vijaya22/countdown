@@ -16,7 +16,7 @@ function generateId() {
   return id;
 }
 
-// Landing page HTML
+// Landing page HTML of the shared user
 function renderPage(countdown) {
   const { target, title } = countdown;
   const pageTitle = title || 'Every Second Counts';
