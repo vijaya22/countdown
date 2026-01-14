@@ -275,12 +275,16 @@ export default {
         const rateLimit = await checkRateLimit(clientIP, env);
 
         if (!rateLimit.allowed) {
-          return new Response(JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }), {
+          return new Response(JSON.stringify({
+            error: 'Rate limit exceeded',
+            retryAfterSeconds: RATE_WINDOW_SECONDS,
+            retryAfterMinutes: Math.ceil(RATE_WINDOW_SECONDS / 60)
+          }), {
             status: 429,
             headers: {
               ...corsHeaders,
               'Content-Type': 'application/json',
-              'Retry-After': '3600',
+              'Retry-After': String(RATE_WINDOW_SECONDS),
             },
           });
         }

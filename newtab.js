@@ -323,6 +323,18 @@ async function init() {
         });
 
         const data = await res.json();
+
+        // Handle rate limit
+        if (res.status === 429) {
+          const mins = data.retryAfterMinutes || 60;
+          shareStatus.textContent = `Limit reached. Try in ${mins} min`;
+          setTimeout(() => {
+            shareStatus.textContent = "";
+          }, 4000);
+          shareBtn.disabled = false;
+          return;
+        }
+
         if (data.url) {
           shareUrl = data.url;
           // Cache the link for future clicks
