@@ -31,12 +31,7 @@ const soundToggle = $("soundToggle");
 const shareBtn = $("shareBtn");
 const shareStatus = $("shareStatus");
 
-// =============================================================================
-// Constants
-// =============================================================================
-
-const WORKER_URL = "https://countdown.everysecondcounts.workers.dev";
-const DEFAULT_TARGET_ISO_LOCAL = "2026-01-31T23:59";
+// Constants are loaded from constants.js
 
 // =============================================================================
 // Utility Functions

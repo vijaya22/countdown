@@ -1,9 +1,17 @@
+import {
+  RATE_LIMIT,
+  RATE_WINDOW_SECONDS,
+  COUNTDOWN_TTL_SECONDS,
+  ID_LENGTH,
+  ID_CHARS,
+  CHROME_STORE_URL
+} from './constants.js';
+
 // Generate a short random ID
 function generateId() {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let id = '';
-  for (let i = 0; i < 8; i++) {
-    id += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < ID_LENGTH; i++) {
+    id += ID_CHARS[Math.floor(Math.random() * ID_CHARS.length)];
   }
   return id;
 }
@@ -132,7 +140,7 @@ function renderPage(countdown) {
     <div class="status" id="status"></div>
     <div class="cta">
       <button id="saveBtn" class="save-btn">Save to Extension</button>
-      <a id="getExt" class="get-ext" href="https://chromewebstore.google.com/detail/every-second-counts/dbpmgoghpheaeldmfgifedhjbdookjbo" target="_blank">
+      <a id="getExt" class="get-ext" href="${CHROME_STORE_URL}" target="_blank">
         Get Extension to Save This Countdown
       </a>
     </div>
@@ -217,10 +225,6 @@ function notFound() {
   return new Response('Countdown not found', { status: 404 });
 }
 
-// Rate limiting config
-const RATE_LIMIT = 10; // max requests per window
-const RATE_WINDOW = 3600; // 1 hour in seconds
-
 // Check rate limit for an IP
 async function checkRateLimit(ip, env) {
   const key = `ratelimit:${ip}`;
@@ -231,11 +235,11 @@ async function checkRateLimit(ip, env) {
     if (count >= RATE_LIMIT) {
       return { allowed: false, remaining: 0 };
     }
-    await env.COUNTDOWNS.put(key, String(count + 1), { expirationTtl: RATE_WINDOW });
+    await env.COUNTDOWNS.put(key, String(count + 1), { expirationTtl: RATE_WINDOW_SECONDS });
     return { allowed: true, remaining: RATE_LIMIT - count - 1 };
   }
 
-  await env.COUNTDOWNS.put(key, '1', { expirationTtl: RATE_WINDOW });
+  await env.COUNTDOWNS.put(key, '1', { expirationTtl: RATE_WINDOW_SECONDS });
   return { allowed: true, remaining: RATE_LIMIT - 1 };
 }
 
@@ -294,7 +298,7 @@ export default {
         const data = { target, title: title || null, created: Date.now() };
 
         // Store for 90 days
-        await env.COUNTDOWNS.put(id, JSON.stringify(data), { expirationTtl: 90 * 24 * 60 * 60 });
+        await env.COUNTDOWNS.put(id, JSON.stringify(data), { expirationTtl: COUNTDOWN_TTL_SECONDS });
 
         const shareUrl = `${url.origin}/c/${id}`;
 
