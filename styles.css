@@ -193,6 +193,44 @@ body {
   transform: translateX(20px);
 }
 
+/* Share row */
+.share-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.share-row span {
+  color: var(--text);
+}
+
+.share-btn {
+  padding: 6px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s ease;
+}
+
+.share-btn:hover {
+  color: var(--text);
+}
+
+.share-btn:disabled {
+  cursor: wait;
+}
+
+.share-status {
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
 /* Coffee link */
 .coffee-link {
   display: block;

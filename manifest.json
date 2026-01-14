@@ -11,6 +11,12 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
-  "permissions": ["storage"]
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://countdown.everysecondcounts.workers.dev/*"],
+      "js": ["content.js"]
+    }
+  ]
 }
   
