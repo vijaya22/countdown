@@ -76,5 +76,11 @@ const THEME_PRESETS = {
       border: '#1f3d1f',
       inputBg: '#152015'
     }
+  },
+  custom: {
+    id: 'custom',
+    name: 'Custom',
+    premium: true,
+    colors: null  // Uses customTheme from storage
   }
 };

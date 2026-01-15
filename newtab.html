@@ -87,6 +87,31 @@
                 <span class="preset-name">Forest</span>
                 <span class="lock-icon">🔒</span>
               </button>
+              <button class="theme-preset" data-theme="custom">
+                <span class="preset-preview custom-preview" id="customPreview"></span>
+                <span class="preset-name">Custom</span>
+                <span class="lock-icon">🔒</span>
+              </button>
+            </div>
+
+            <!-- Custom color picker (shown when Custom theme selected) -->
+            <div id="customColorPicker" class="custom-color-picker hidden">
+              <div class="color-row">
+                <label>Background</label>
+                <input type="color" id="colorBg" class="color-input" value="#1a1a1a" />
+              </div>
+              <div class="color-row">
+                <label>Text</label>
+                <input type="color" id="colorText" class="color-input" value="#f5f5f3" />
+              </div>
+              <div class="color-row">
+                <label>Muted</label>
+                <input type="color" id="colorMuted" class="color-input" value="#888888" />
+              </div>
+              <div class="color-row">
+                <label>Border</label>
+                <input type="color" id="colorBorder" class="color-input" value="#333333" />
+              </div>
             </div>
           </div>
 

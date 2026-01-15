@@ -470,6 +470,21 @@ async function init() {
   // Settings Modal Event Handlers
   // ---------------------------------------------------------------------------
 
+  // Color picker elements
+  const customColorPicker = $("customColorPicker");
+  const colorBg = $("colorBg");
+  const colorText = $("colorText");
+  const colorMuted = $("colorMuted");
+  const colorBorder = $("colorBorder");
+  const customPreview = $("customPreview");
+
+  // Update custom preview gradient based on custom colors
+  function updateCustomPreview() {
+    if (customTheme) {
+      customPreview.style.background = `linear-gradient(135deg, ${customTheme.bg} 0%, ${customTheme.text} 100%)`;
+    }
+  }
+
   // Update premium UI
   function updatePremiumUI() {
     if (premium) {
@@ -494,6 +509,22 @@ async function init() {
         lockIcon.style.display = isLocked ? "inline" : "none";
       }
     });
+
+    // Show/hide color picker based on theme and premium status
+    if (themeId === 'custom' && premium) {
+      customColorPicker?.classList.remove("hidden");
+      // Populate color inputs
+      if (customTheme) {
+        colorBg.value = customTheme.bg;
+        colorText.value = customTheme.text;
+        colorMuted.value = customTheme.muted;
+        colorBorder.value = customTheme.border;
+      }
+    } else {
+      customColorPicker?.classList.add("hidden");
+    }
+
+    updateCustomPreview();
   }
 
   // Open settings modal
@@ -523,12 +554,43 @@ async function init() {
         return;
       }
 
+      // If selecting custom and no custom theme exists, create default
+      if (presetId === 'custom' && !customTheme) {
+        customTheme = {
+          bg: '#1a1a1a',
+          text: '#f5f5f3',
+          muted: '#888888',
+          border: '#333333',
+          inputBg: '#2a2a2a'
+        };
+        await setCustomTheme(customTheme);
+      }
+
       themeId = presetId;
       await setThemeId(themeId);
       applyTheme(themeId, customTheme);
       updatePremiumUI();
     });
   });
+
+  // Color input change handlers
+  async function handleColorChange() {
+    customTheme = {
+      bg: colorBg.value,
+      text: colorText.value,
+      muted: colorMuted.value,
+      border: colorBorder.value,
+      inputBg: colorBg.value  // Use bg as inputBg base
+    };
+    await setCustomTheme(customTheme);
+    applyTheme('custom', customTheme);
+    updateCustomPreview();
+  }
+
+  colorBg?.addEventListener("input", handleColorChange);
+  colorText?.addEventListener("input", handleColorChange);
+  colorMuted?.addEventListener("input", handleColorChange);
+  colorBorder?.addEventListener("input", handleColorChange);
 
   // ---------------------------------------------------------------------------
   // License Modal Event Handlers
