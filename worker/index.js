@@ -4,7 +4,9 @@ import {
   COUNTDOWN_TTL_SECONDS,
   ID_LENGTH,
   ID_CHARS,
-  CHROME_STORE_URL
+  CHROME_STORE_URL,
+  LEMON_SQUEEZY_API_URL,
+  LICENSE_CACHE_SECONDS
 } from './constants.js';
 
 // Generate a short random ID
@@ -267,6 +269,63 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// =============================================================================
+// License Validation Functions
+// =============================================================================
+
+// Validate license with LemonSqueezy API
+async function validateWithLemonSqueezy(licenseKey, env) {
+  try {
+    const response = await fetch(`${LEMON_SQUEEZY_API_URL}/v1/licenses/validate`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.LEMON_SQUEEZY_API_KEY}`
+      },
+      body: JSON.stringify({
+        license_key: licenseKey
+      })
+    });
+
+    const data = await response.json();
+    return {
+      valid: data.valid === true,
+      status: data.license_key?.status || 'unknown',
+      expiresAt: data.license_key?.expires_at || null
+    };
+  } catch (e) {
+    return { valid: false, error: 'Validation failed' };
+  }
+}
+
+// Check license with caching
+async function checkLicense(licenseKey, env) {
+  if (!licenseKey) return { valid: false };
+
+  // Check cache first
+  const cacheKey = `license:${licenseKey}`;
+  const cached = await env.LICENSES.get(cacheKey, { type: 'json' });
+
+  if (cached && cached.status === 'active') {
+    return { valid: true, status: 'active', cached: true };
+  }
+
+  // Validate with LemonSqueezy
+  const result = await validateWithLemonSqueezy(licenseKey, env);
+
+  if (result.valid) {
+    // Cache the valid license
+    await env.LICENSES.put(cacheKey, JSON.stringify({
+      status: 'active',
+      validatedAt: Date.now(),
+      expiresAt: result.expiresAt
+    }), { expirationTtl: LICENSE_CACHE_SECONDS });
+  }
+
+  return result;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -275,6 +334,73 @@ export default {
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
+    }
+
+    // API: Activate license
+    if (path === '/api/license/activate' && request.method === 'POST') {
+      try {
+        const { licenseKey } = await request.json();
+
+        if (!licenseKey) {
+          return new Response(JSON.stringify({ error: 'License key required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const result = await validateWithLemonSqueezy(licenseKey, env);
+
+        if (!result.valid) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid license key'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Cache the valid license
+        const cacheKey = `license:${licenseKey}`;
+        await env.LICENSES.put(cacheKey, JSON.stringify({
+          status: 'active',
+          validatedAt: Date.now(),
+          expiresAt: result.expiresAt
+        }), { expirationTtl: LICENSE_CACHE_SECONDS });
+
+        return new Response(JSON.stringify({
+          success: true,
+          status: 'active',
+          expiresAt: result.expiresAt
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // API: Validate license
+    if (path === '/api/license/validate' && request.method === 'POST') {
+      try {
+        const { licenseKey } = await request.json();
+        const result = await checkLicense(licenseKey, env);
+
+        return new Response(JSON.stringify({
+          valid: result.valid,
+          status: result.valid ? 'active' : 'invalid'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ valid: false, error: 'Invalid request' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     // API: Create new countdown

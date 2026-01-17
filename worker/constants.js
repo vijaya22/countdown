@@ -14,3 +14,8 @@ export const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 // Chrome Web Store URL
 export const CHROME_STORE_URL = "https://chromewebstore.google.com/detail/every-second-counts/dbpmgoghpheaeldmfgifedhjbdookjbo";
+
+// LemonSqueezy
+export const LEMON_SQUEEZY_API_URL = "https://api.lemonsqueezy.com";
+export const LEMON_SQUEEZY_CHECKOUT_URL = "https://everysecondcounts.lemonsqueezy.com/checkout/buy/f9a1a62d-573d-4a4f-aed6-4ae3de74af59";
+export const LICENSE_CACHE_SECONDS = 86400 * 30; // Cache license validation for 30 days
