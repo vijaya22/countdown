@@ -545,8 +545,10 @@ async function init() {
   }
 
   // Open settings modal
-  settingsBtn.addEventListener("click", () => {
+  settingsBtn.addEventListener("click", async () => {
     soundToggle.checked = soundEnabled;
+    // Refresh premium status from storage
+    premium = await isPremium();
     updatePremiumUI();
     settingsModal.classList.remove("hidden");
   });
