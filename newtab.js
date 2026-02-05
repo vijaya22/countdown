@@ -191,13 +191,28 @@ async function activateLicense(licenseKey) {
 // =============================================================================
 
 /**
+ * Gets today's end of day (11:59 PM) as ISO local string
+ * @returns {string} ISO local string like "2026-02-05T23:59"
+ */
+function getTodayEOD() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T23:59`;
+}
+
+/**
  * Gets the target date from storage
  * @returns {Promise<string>} ISO local string of target date
  */
 async function getTargetIsoLocal() {
-  const { targetIsoLocal = DEFAULT_TARGET_ISO_LOCAL } =
-    await chrome.storage.sync.get({ targetIsoLocal: DEFAULT_TARGET_ISO_LOCAL });
-  return targetIsoLocal;
+  const result = await chrome.storage.sync.get('targetIsoLocal');
+  // If no target set, use today's end of day
+  if (!result.targetIsoLocal) {
+    return getTodayEOD();
+  }
+  return result.targetIsoLocal;
 }
 
 /**
@@ -427,11 +442,17 @@ async function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFo
   const now = new Date();
   const diffMs = targetDate - now;
 
-  // Countdown finished
+  // Countdown finished - count up to show elapsed time
   if (diffMs <= 0) {
-    hh.textContent = "00";
-    mm.textContent = "00";
-    ss.textContent = "00";
+    const elapsedMs = Math.abs(diffMs);
+    const totalSeconds = Math.floor(elapsedMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    hh.textContent = pad2(hours);
+    mm.textContent = pad2(minutes);
+    ss.textContent = pad2(seconds);
     statusText.textContent = "✅ Time's up!";
 
     // Play sound once when countdown ends
