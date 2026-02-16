@@ -3,17 +3,8 @@
 // API endpoint
 const WORKER_URL = "https://countdown.everysecondcounts.workers.dev";
 
-// Default countdown target (if user never sets one)
-const DEFAULT_TARGET_ISO_LOCAL = "2026-01-31T23:59";
-
-// Share link cache duration (not currently enforced, just for reference)
-const SHARE_LINK_CACHE_DAYS = 90;
-
 // License validation interval (7 days)
 const LICENSE_REVALIDATION_MS = 7 * 24 * 60 * 60 * 1000;
-
-// LemonSqueezy checkout URL
-const LEMON_SQUEEZY_CHECKOUT_URL = "https://everysecondcounts.lemonsqueezy.com/checkout/buy/f9a1a62d-573d-4a4f-aed6-4ae3de74af59";
 
 // Theme presets
 const THEME_PRESETS = {

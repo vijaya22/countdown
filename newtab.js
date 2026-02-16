@@ -28,7 +28,6 @@ const dtInput = $("dtInput");
 const settingsModal = $("settingsModal");
 const settingsBtn = $("settingsBtn");
 const soundToggle = $("soundToggle");
-const darkModeToggle = $("darkModeToggle");
 const shareBtn = $("shareBtn");
 const shareStatus = $("shareStatus");
 

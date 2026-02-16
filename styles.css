@@ -548,20 +548,12 @@ body {
   font-size: 12px;
 }
 
-/* Background image applied to body */
+/* Background image applied to body - uses dark theme for better contrast */
 body.has-bg-image {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
-}
-
-body.has-bg-image .wrap {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* Dark theme for background image mode - provides better contrast */
-body.has-bg-image {
   --text: #f5f5f3;
   --muted: #aaaaaa;
   --border: #444444;
