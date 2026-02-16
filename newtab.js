@@ -321,6 +321,7 @@ function applyTheme(themeId, customColors = null) {
   root.style.setProperty('--muted', colors.muted);
   root.style.setProperty('--border', colors.border);
   root.style.setProperty('--input-bg', colors.inputBg);
+  root.style.setProperty('--card-bg', colors.bg);
 
   // Determine if theme is dark based on background luminance
   const isDark = isColorDark(colors.bg);
@@ -692,6 +693,13 @@ async function init() {
   const bgImageRemove = $("bgImageRemove");
   const bgImageLock = $("bgImageLock");
 
+  // Crop modal elements
+  const cropModal = $("cropModal");
+  const cropImage = $("cropImage");
+  const cropApplyBtn = $("cropApplyBtn");
+  const cropCancelBtn = $("cropCancelBtn");
+  let cropper = null;
+
   // Update background image UI based on premium status
   function updateBgImageUI() {
     const isLocked = !premium;
@@ -707,7 +715,17 @@ async function init() {
     }
   }
 
-  // Handle background image upload
+  // Close crop modal helper
+  function closeCropModal() {
+    cropModal.classList.add("hidden");
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+    cropImage.src = "";
+  }
+
+  // Handle background image upload - show crop modal
   bgImageInput?.addEventListener("change", async (e) => {
     if (!premium) {
       licenseModal.classList.remove("hidden");
@@ -726,16 +744,83 @@ async function init() {
       return;
     }
 
-    // Convert to base64
+    // Load image and show crop modal
     const reader = new FileReader();
-    reader.onload = async (event) => {
-      bgImage = event.target.result;
-      await setBackgroundImage(bgImage);
-      applyBackgroundImage(bgImage);
-      updateBgImageUI();
+    reader.onload = (event) => {
+      cropImage.src = event.target.result;
+      cropModal.classList.remove("hidden");
+
+      // Initialize Cropper.js after image loads
+      cropImage.onload = () => {
+        if (cropper) {
+          cropper.destroy();
+        }
+        cropper = new Cropper(cropImage, {
+          aspectRatio: NaN, // Free aspect ratio
+          viewMode: 2, // Restrict image to fit within container, show full image
+          dragMode: 'crop',
+          autoCropArea: 1, // Select entire image by default
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: false,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+          minContainerWidth: 200,
+          minContainerHeight: 200
+        });
+      };
     };
     reader.readAsDataURL(file);
     bgImageInput.value = "";
+  });
+
+  // Crop apply button
+  cropApplyBtn?.addEventListener("click", async () => {
+    if (!cropper) return;
+
+    // Get the cropped canvas at full resolution first
+    const croppedCanvas = cropper.getCroppedCanvas();
+
+    if (!croppedCanvas) {
+      closeCropModal();
+      return;
+    }
+
+    // Scale down if too large (max 1920px on longest side)
+    const maxDimension = 1920;
+    let finalCanvas = croppedCanvas;
+
+    if (croppedCanvas.width > maxDimension || croppedCanvas.height > maxDimension) {
+      const scale = Math.min(maxDimension / croppedCanvas.width, maxDimension / croppedCanvas.height);
+      const newWidth = Math.round(croppedCanvas.width * scale);
+      const newHeight = Math.round(croppedCanvas.height * scale);
+
+      finalCanvas = document.createElement('canvas');
+      finalCanvas.width = newWidth;
+      finalCanvas.height = newHeight;
+      const ctx = finalCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(croppedCanvas, 0, 0, newWidth, newHeight);
+    }
+
+    // Convert to JPEG at 85% quality
+    bgImage = finalCanvas.toDataURL("image/jpeg", 0.85);
+    await setBackgroundImage(bgImage);
+    applyBackgroundImage(bgImage);
+    updateBgImageUI();
+
+    closeCropModal();
+  });
+
+  // Crop cancel button
+  cropCancelBtn?.addEventListener("click", closeCropModal);
+
+  // Close crop modal on backdrop click
+  cropModal?.addEventListener("click", (e) => {
+    if (e.target === cropModal) closeCropModal();
   });
 
   // Handle background image removal
@@ -881,6 +966,9 @@ async function init() {
       if (licenseModal && !licenseModal.classList.contains("hidden")) {
         licenseModal.classList.add("hidden");
         licenseError?.classList.add("hidden");
+      }
+      if (cropModal && !cropModal.classList.contains("hidden")) {
+        closeCropModal();
       }
     }
   });

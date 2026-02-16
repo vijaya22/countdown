@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Every Second Counts</title>
+    <link rel="stylesheet" href="lib/cropper.min.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -163,8 +164,23 @@
           <div id="licenseError" class="license-error hidden"></div>
         </div>
       </section>
+
+      <!-- Crop modal -->
+      <section id="cropModal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="card crop-card">
+          <div class="cardTitle">Crop Image</div>
+          <div class="crop-container">
+            <img id="cropImage" src="" alt="Image to crop" />
+          </div>
+          <div class="crop-actions">
+            <button id="cropCancelBtn" class="crop-btn crop-btn-secondary">Cancel</button>
+            <button id="cropApplyBtn" class="crop-btn crop-btn-primary">Apply</button>
+          </div>
+        </div>
+      </section>
     </main>
 
+    <script src="lib/cropper.min.js"></script>
     <script src="constants.js"></script>
     <script src="newtab.js"></script>
   </body>

@@ -14,6 +14,7 @@ ntp-app,
   --muted: #888888;
   --border: #e0e0e0;
   --input-bg: #ffffff;
+  --card-bg: #f5f5f3;
   color-scheme: light;
 }
 
@@ -127,7 +128,7 @@ body {
   width: min(320px, 90vw);
   border-radius: 12px;
   padding: 20px;
-  background: var(--bg);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
@@ -559,27 +560,108 @@ body.has-bg-image .wrap {
   background: rgba(0, 0, 0, 0.3);
 }
 
-/* System preference colors when using background image */
-@media (prefers-color-scheme: light) {
-  body.has-bg-image {
-    --text: #1a1a1a;
-    --muted: #555555;
-    --border: rgba(0, 0, 0, 0.2);
-    --input-bg: rgba(255, 255, 255, 0.9);
-  }
-  body.has-bg-image .wrap {
-    background: rgba(255, 255, 255, 0.4);
-  }
+/* Dark theme for background image mode - provides better contrast */
+body.has-bg-image {
+  --text: #f5f5f3;
+  --muted: #aaaaaa;
+  --border: #444444;
+  --input-bg: #2a2a2a;
+  --card-bg: #1a1a1a;
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  body.has-bg-image {
-    --text: #f5f5f3;
-    --muted: #aaaaaa;
-    --border: rgba(255, 255, 255, 0.2);
-    --input-bg: rgba(0, 0, 0, 0.7);
-  }
-  body.has-bg-image .wrap {
-    background: rgba(0, 0, 0, 0.4);
-  }
+body.has-bg-image .wrap {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+body.has-bg-image .card {
+  background: var(--card-bg);
+}
+
+/* Crop modal */
+#cropModal {
+  z-index: 1000;
+}
+
+.crop-card {
+  width: min(600px, 90vw);
+}
+
+.crop-container {
+  max-height: 400px;
+  overflow: hidden;
+  background: #000;
+  border-radius: 8px;
+}
+
+.crop-container img {
+  display: block;
+  max-width: 100%;
+}
+
+.crop-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.crop-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.crop-btn-primary {
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+}
+
+.crop-btn-primary:hover {
+  opacity: 0.85;
+}
+
+.crop-btn-secondary {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.crop-btn-secondary:hover {
+  border-color: var(--text);
+}
+
+/* Cropper.js theme overrides */
+.cropper-view-box,
+.cropper-face {
+  border-radius: 0;
+}
+
+.cropper-view-box {
+  outline: 1px solid rgba(255, 255, 255, 0.75);
+  outline-color: rgba(255, 255, 255, 0.75);
+}
+
+.cropper-line {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.cropper-point {
+  background-color: #fff;
+  width: 8px;
+  height: 8px;
+  opacity: 1;
+}
+
+.cropper-point.point-se {
+  width: 10px;
+  height: 10px;
+}
+
+.cropper-dashed {
+  border-color: rgba(255, 255, 255, 0.5);
 }
