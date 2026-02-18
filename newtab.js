@@ -322,6 +322,24 @@ function applyTheme(themeId, customColors = null) {
   root.style.setProperty('--input-bg', colors.inputBg);
   root.style.setProperty('--card-bg', colors.bg);
 
+  // body.has-bg-image overrides --text and related vars at the body level,
+  // which takes precedence over root for all child elements. For custom theme,
+  // set inline styles on body so the user's chosen colors always win.
+  const bodyStyle = document.body.style;
+  if (themeId === 'custom') {
+    bodyStyle.setProperty('--text', colors.text);
+    bodyStyle.setProperty('--muted', colors.muted);
+    bodyStyle.setProperty('--border', colors.border);
+    bodyStyle.setProperty('--input-bg', colors.inputBg);
+    bodyStyle.setProperty('--card-bg', colors.bg);
+  } else {
+    bodyStyle.removeProperty('--text');
+    bodyStyle.removeProperty('--muted');
+    bodyStyle.removeProperty('--border');
+    bodyStyle.removeProperty('--input-bg');
+    bodyStyle.removeProperty('--card-bg');
+  }
+
   // Determine if theme is dark based on background luminance
   const isDark = isColorDark(colors.bg);
   root.setAttribute('data-theme', isDark ? 'dark' : 'light');
