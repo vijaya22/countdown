@@ -52,6 +52,10 @@ const dtInput = $("dtInput");
 const settingsModal = $("settingsModal");
 const settingsBtn = $("settingsBtn");
 const soundToggle = $("soundToggle");
+const fontSection = $("fontSection");
+const fontLock = $("fontLock");
+const clockFontSelect = $("clockFontSelect");
+const textFontSelect = $("textFontSelect");
 const shareBtn = $("shareBtn");
 const shareStatus = $("shareStatus");
 const licenseModal = $("licenseModal");
@@ -329,6 +333,48 @@ async function getSoundEnabled() {
  */
 async function setSoundEnabled(val) {
   await chrome.storage.sync.set({ soundEnabled: val });
+}
+
+function normalizeFontId(id) {
+  return FONT_PRESETS[id] ? id : "default";
+}
+
+function resolveFontId(id, allowPremium) {
+  const normalized = normalizeFontId(id);
+  const preset = FONT_PRESETS[normalized];
+  if (preset?.premium && !allowPremium) return "default";
+  return normalized;
+}
+
+async function getClockFontId() {
+  const { clockFontId = "default" } = await chrome.storage.sync.get({ clockFontId: "default" });
+  return normalizeFontId(clockFontId);
+}
+
+async function getTextFontId() {
+  const { textFontId = "default" } = await chrome.storage.sync.get({ textFontId: "default" });
+  return normalizeFontId(textFontId);
+}
+
+async function setClockFontId(clockFontId) {
+  await chrome.storage.sync.set({ clockFontId: normalizeFontId(clockFontId) });
+}
+
+async function setTextFontId(textFontId) {
+  await chrome.storage.sync.set({ textFontId: normalizeFontId(textFontId) });
+}
+
+function applyFontPreferences(clockFontId, textFontId, allowPremium) {
+  const appliedClockId = resolveFontId(clockFontId, allowPremium);
+  const appliedTextId = resolveFontId(textFontId, allowPremium);
+  const clockFont = FONT_PRESETS[appliedClockId] || FONT_PRESETS.default;
+  const textFont = FONT_PRESETS[appliedTextId] || FONT_PRESETS.default;
+
+  const root = document.documentElement;
+  root.style.setProperty("--clock-font", clockFont.family);
+  root.style.setProperty("--body-font", textFont.family);
+
+  return { appliedClockId, appliedTextId };
 }
 
 /**
@@ -609,12 +655,15 @@ async function init() {
   let pomodoroToastHideTimer = null;
   let pomodoroToastCleanupTimer = null;
   let themeId = await getThemeId();
+  let clockFontId = await getClockFontId();
+  let textFontId = await getTextFontId();
   let customTheme = await getCustomTheme();
   let premium = await isPremium();
   let bgImage = await getBackgroundImage();
 
   // Apply theme immediately
   applyTheme(themeId, customTheme);
+  applyFontPreferences(clockFontId, textFontId, premium);
 
   // Apply background image if set
   if (bgImage) {
@@ -977,6 +1026,31 @@ async function init() {
   const colorBorder = $("colorBorder");
   const customPreview = $("customPreview");
 
+  function populateFontOptions() {
+    const presets = Object.values(FONT_PRESETS);
+    [clockFontSelect, textFontSelect].forEach((select) => {
+      if (!select) return;
+      select.innerHTML = "";
+      presets.forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.id;
+        option.textContent = preset.premium ? `${preset.name} (Premium)` : preset.name;
+        select.append(option);
+      });
+    });
+  }
+
+  function syncFontUI() {
+    const { appliedClockId, appliedTextId } = applyFontPreferences(clockFontId, textFontId, premium);
+    if (clockFontSelect) clockFontSelect.value = appliedClockId;
+    if (textFontSelect) textFontSelect.value = appliedTextId;
+  }
+
+  function promptPremiumForFonts() {
+    licenseModal?.classList.remove("hidden");
+    licenseInput?.focus();
+  }
+
   // Update custom preview gradient based on custom colors
   function updateCustomPreview() {
     if (customTheme) {
@@ -1023,6 +1097,20 @@ async function init() {
       customColorPicker?.classList.add("hidden");
     }
 
+    if (fontSection) {
+      fontSection.classList.toggle("locked", !premium);
+    }
+    if (fontLock) {
+      fontLock.style.display = premium ? "none" : "inline";
+    }
+    if (clockFontSelect) {
+      clockFontSelect.disabled = !premium;
+    }
+    if (textFontSelect) {
+      textFontSelect.disabled = !premium;
+    }
+    syncFontUI();
+
     if (pomoToggleBtn) {
       pomoToggleBtn.classList.toggle("hidden", !premium);
     }
@@ -1032,6 +1120,8 @@ async function init() {
 
     updateCustomPreview();
   }
+
+  populateFontOptions();
 
   // Apply lock state immediately on page load.
   updatePremiumUI();
@@ -1050,6 +1140,30 @@ async function init() {
   soundToggle.addEventListener("change", async () => {
     soundEnabled = soundToggle.checked;
     await setSoundEnabled(soundEnabled);
+  });
+
+  clockFontSelect?.addEventListener("change", async () => {
+    if (!premium) {
+      syncFontUI();
+      promptPremiumForFonts();
+      return;
+    }
+
+    clockFontId = normalizeFontId(clockFontSelect.value);
+    await setClockFontId(clockFontId);
+    syncFontUI();
+  });
+
+  textFontSelect?.addEventListener("change", async () => {
+    if (!premium) {
+      syncFontUI();
+      promptPremiumForFonts();
+      return;
+    }
+
+    textFontId = normalizeFontId(textFontSelect.value);
+    await setTextFontId(textFontId);
+    syncFontUI();
   });
 
   // Theme preset clicks

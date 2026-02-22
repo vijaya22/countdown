@@ -75,3 +75,43 @@ const THEME_PRESETS = {
     colors: null  // Uses customTheme from storage
   }
 };
+
+// Font presets
+const FONT_PRESETS = {
+  default: {
+    id: "default",
+    name: "System",
+    premium: false,
+    family: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
+  },
+  serif: {
+    id: "serif",
+    name: "Classic Serif",
+    premium: true,
+    family: 'Georgia, "Times New Roman", serif'
+  },
+  mono: {
+    id: "mono",
+    name: "Monospace",
+    premium: true,
+    family: '"SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace'
+  },
+  rounded: {
+    id: "rounded",
+    name: "Rounded",
+    premium: true,
+    family: '"Trebuchet MS", "Segoe UI", Verdana, sans-serif'
+  },
+  elegant: {
+    id: "elegant",
+    name: "Elegant",
+    premium: true,
+    family: '"Palatino Linotype", Palatino, "Book Antiqua", serif'
+  },
+  tech: {
+    id: "tech",
+    name: "Tech",
+    premium: true,
+    family: '"Arial Narrow", "Avenir Next Condensed", "Roboto Condensed", sans-serif'
+  }
+};
