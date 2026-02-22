@@ -549,6 +549,25 @@ body {
   margin-right: 8px;
 }
 
+.feedback-link {
+  display: block;
+  margin-top: 14px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.feedback-link:hover {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
 /* Coffee link */
 .coffee-link {
   display: block;
