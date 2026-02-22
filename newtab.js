@@ -6,6 +6,7 @@
  * - Set target date/time for countdown
  * - Sound alert when countdown ends
  * - Shareable countdown links via Cloudflare Worker
+ * - Pomodoro timer with focus/break auto-cycling
  */
 
 const $ = (id) => document.getElementById(id);
@@ -19,6 +20,29 @@ const mm = $("mm");
 const ss = $("ss");
 const targetText = $("targetText");
 const statusText = $("statusText");
+const pomoMm = $("pomoMm");
+const pomoSs = $("pomoSs");
+const pomoPhase = $("pomoPhase");
+const pomoStatus = $("pomoStatus");
+const pomoSessions = $("pomoSessions");
+const pomoStartPauseBtn = $("pomoStartPauseBtn");
+const pomoSkipBtn = $("pomoSkipBtn");
+const pomoResetBtn = $("pomoResetBtn");
+const pomoStopBtn = $("pomoStopBtn");
+const pomoToggleBtn = $("pomoToggleBtn");
+const pomoSetupBtn = $("pomoSetupBtn");
+const pomoDrawer = $("pomoDrawer");
+const pomoToast = $("pomoToast");
+const pomoMainView = $("pomoMainView");
+const pomoSetupView = $("pomoSetupView");
+const pomoSetupCancelBtn = $("pomoSetupCancelBtn");
+const pomoSetupError = $("pomoSetupError");
+const pomoFocusInput = $("pomoFocusInput");
+const pomoShortBreakInput = $("pomoShortBreakInput");
+const pomoLongBreakInput = $("pomoLongBreakInput");
+const pomoLongEveryInput = $("pomoLongEveryInput");
+const pomoRunIntervalsInput = $("pomoRunIntervalsInput");
+const pomoSoundToggleInput = $("pomoSoundToggleInput");
 
 // Date modal elements
 const dateModal = $("dateModal");
@@ -30,6 +54,10 @@ const settingsBtn = $("settingsBtn");
 const soundToggle = $("soundToggle");
 const shareBtn = $("shareBtn");
 const shareStatus = $("shareStatus");
+const licenseModal = $("licenseModal");
+const licenseInput = $("licenseInput");
+const activateBtn = $("activateBtn");
+const licenseError = $("licenseError");
 
 // Constants are loaded from constants.js
 
@@ -73,6 +101,70 @@ function isoLocalToDate(isoLocal) {
   const [y, m, d] = datePart.split("-").map(Number);
   const [hh, mm] = timePart.split(":").map(Number);
   return new Date(y, m - 1, d, hh, mm, 0, 0);
+}
+
+const POMODORO_PHASE_LABELS = {
+  focus: "Focus",
+  shortBreak: "Short Break",
+  longBreak: "Long Break"
+};
+
+const DEFAULT_POMODORO_SETTINGS = {
+  focusMinutes: 25,
+  shortBreakMinutes: 5,
+  longBreakMinutes: 15,
+  longBreakEvery: 4,
+  runIntervals: 4,
+  pomodoroSoundEnabled: true
+};
+
+function getPomodoroRemainingMs(pomodoroState) {
+  if (!pomodoroState) return 0;
+  if (pomodoroState.isRunning && pomodoroState.endTimeMs) {
+    return Math.max(0, pomodoroState.endTimeMs - Date.now());
+  }
+  return Math.max(0, pomodoroState.remainingMs || 0);
+}
+
+function renderPomodoro(pomodoroState, pomodoroSettings = DEFAULT_POMODORO_SETTINGS) {
+  if (!pomoMm || !pomoSs || !pomoPhase || !pomoStatus || !pomoSessions || !pomoStartPauseBtn) {
+    return;
+  }
+
+  if (!pomodoroState) {
+    pomoMm.textContent = "25";
+    pomoSs.textContent = "00";
+    pomoPhase.textContent = "Focus";
+    pomoStatus.textContent = "Start now?";
+    pomoSessions.textContent = `Focus sessions: 0/${pomodoroSettings.runIntervals}`;
+    pomoStartPauseBtn.textContent = "Start";
+    return;
+  }
+
+  const totalSeconds = Math.max(0, Math.ceil(getPomodoroRemainingMs(pomodoroState) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  pomoMm.textContent = pad2(minutes);
+  pomoSs.textContent = pad2(seconds);
+  pomoPhase.textContent = POMODORO_PHASE_LABELS[pomodoroState.phase] || "Focus";
+  if (pomodoroState.isRunning) {
+    pomoStatus.textContent = "Running";
+  } else if (pomodoroState.status === "stopped") {
+    pomoStatus.textContent = pomodoroState.stopReason === "manual" ? "Stopped" : "Start now?";
+  } else {
+    pomoStatus.textContent = "Paused";
+  }
+  pomoSessions.textContent = `Focus sessions: ${pomodoroState.completedFocusSessions || 0}/${pomodoroSettings.runIntervals}`;
+  pomoStartPauseBtn.textContent = pomodoroState.isRunning ? "Pause" : "Start";
+}
+
+async function sendPomodoroMessage(type, payload = {}) {
+  try {
+    return await chrome.runtime.sendMessage({ type, ...payload });
+  } catch (e) {
+    return { ok: false, error: e?.message || "Unable to contact background worker" };
+  }
 }
 
 // =============================================================================
@@ -508,6 +600,14 @@ async function init() {
   let targetDate = isoLocalToDate(isoLocal);
   let soundEnabled = await getSoundEnabled();
   let soundPlayedFor = await getSoundPlayedFor();
+  let pomodoroState = null;
+  let pomodoroSettings = { ...DEFAULT_POMODORO_SETTINGS };
+  let lastPomodoroTransitionAt = 0;
+  let hasInitializedPomodoroState = false;
+  let isPomodoroDrawerOpen = false;
+  let isPomodoroSetupOpen = false;
+  let pomodoroToastHideTimer = null;
+  let pomodoroToastCleanupTimer = null;
   let themeId = await getThemeId();
   let customTheme = await getCustomTheme();
   let premium = await isPremium();
@@ -524,8 +624,185 @@ async function init() {
   // Display target date
   targetText.textContent = `Target: ${formatLocal(targetDate)}`;
 
+  function setPomodoroDrawerOpen(nextOpen) {
+    isPomodoroDrawerOpen = Boolean(nextOpen);
+    if (!isPomodoroDrawerOpen) {
+      setPomodoroSetupOpen(false);
+    }
+    if (pomoDrawer) {
+      pomoDrawer.classList.toggle("open", isPomodoroDrawerOpen);
+    }
+    if (pomoToggleBtn) {
+      pomoToggleBtn.classList.toggle("open", isPomodoroDrawerOpen);
+      pomoToggleBtn.setAttribute("aria-expanded", String(isPomodoroDrawerOpen));
+    }
+  }
+
+  function promptPremiumForPomodoro() {
+    licenseModal?.classList.remove("hidden");
+    licenseInput?.focus();
+  }
+
+  function ensurePomodoroPremiumAccess() {
+    if (premium) return true;
+    promptPremiumForPomodoro();
+    return false;
+  }
+
+  function setPomodoroSetupOpen(nextOpen) {
+    isPomodoroSetupOpen = Boolean(nextOpen);
+    if (pomoMainView) {
+      pomoMainView.classList.toggle("hidden", isPomodoroSetupOpen);
+    }
+    if (pomoSetupView) {
+      pomoSetupView.classList.toggle("hidden", !isPomodoroSetupOpen);
+    }
+    if (pomoSetupBtn) {
+      pomoSetupBtn.textContent = isPomodoroSetupOpen ? "Back" : "Setup";
+    }
+    if (pomoSetupError) {
+      pomoSetupError.classList.add("hidden");
+      pomoSetupError.textContent = "";
+    }
+  }
+
+  function applyPomodoroSettings(nextSettings) {
+    if (!nextSettings) return;
+    pomodoroSettings = { ...DEFAULT_POMODORO_SETTINGS, ...nextSettings };
+  }
+
+  function populatePomodoroSetupInputs() {
+    if (pomoFocusInput) pomoFocusInput.value = String(pomodoroSettings.focusMinutes);
+    if (pomoShortBreakInput) pomoShortBreakInput.value = String(pomodoroSettings.shortBreakMinutes);
+    if (pomoLongBreakInput) pomoLongBreakInput.value = String(pomodoroSettings.longBreakMinutes);
+    if (pomoLongEveryInput) pomoLongEveryInput.value = String(pomodoroSettings.longBreakEvery);
+    if (pomoRunIntervalsInput) pomoRunIntervalsInput.value = String(pomodoroSettings.runIntervals);
+    if (pomoSoundToggleInput) pomoSoundToggleInput.checked = pomodoroSettings.pomodoroSoundEnabled !== false;
+  }
+
+  function readPomodoroSetupInputs() {
+    return {
+      focusMinutes: Number(pomoFocusInput?.value),
+      shortBreakMinutes: Number(pomoShortBreakInput?.value),
+      longBreakMinutes: Number(pomoLongBreakInput?.value),
+      longBreakEvery: Number(pomoLongEveryInput?.value),
+      runIntervals: Number(pomoRunIntervalsInput?.value),
+      pomodoroSoundEnabled: Boolean(pomoSoundToggleInput?.checked)
+    };
+  }
+
+  function validatePomodoroSettings(candidate) {
+    if (!Number.isInteger(candidate.focusMinutes) || candidate.focusMinutes < 1 || candidate.focusMinutes > 180) {
+      return "Focus must be between 1 and 180 minutes.";
+    }
+    if (!Number.isInteger(candidate.shortBreakMinutes) || candidate.shortBreakMinutes < 1 || candidate.shortBreakMinutes > 60) {
+      return "Short break must be between 1 and 60 minutes.";
+    }
+    if (!Number.isInteger(candidate.longBreakMinutes) || candidate.longBreakMinutes < 1 || candidate.longBreakMinutes > 120) {
+      return "Long break must be between 1 and 120 minutes.";
+    }
+    if (!Number.isInteger(candidate.longBreakEvery) || candidate.longBreakEvery < 2 || candidate.longBreakEvery > 12) {
+      return "Long break frequency must be between 2 and 12 sessions.";
+    }
+    if (!Number.isInteger(candidate.runIntervals) || candidate.runIntervals < 1 || candidate.runIntervals > 30) {
+      return "Run intervals must be between 1 and 30.";
+    }
+    return null;
+  }
+
+  function getPhaseToastMessage(state) {
+    if (state?.status === "stopped" && state?.stopReason === "completed") {
+      return "Pomodoro intervals complete";
+    }
+    if (state?.phase === "shortBreak") return "Short break started";
+    if (state?.phase === "longBreak") return "Long break started";
+    return "Focus started";
+  }
+
+  function showPomodoroToast(message) {
+    if (!pomoToast) return;
+
+    if (pomodoroToastHideTimer) clearTimeout(pomodoroToastHideTimer);
+    if (pomodoroToastCleanupTimer) clearTimeout(pomodoroToastCleanupTimer);
+
+    pomoToast.textContent = message;
+    pomoToast.classList.remove("hidden", "show", "hiding");
+    // Force reflow so re-showing the same toast still animates.
+    void pomoToast.offsetWidth;
+    pomoToast.classList.add("show");
+
+    pomodoroToastHideTimer = setTimeout(() => {
+      pomoToast.classList.remove("show");
+      pomoToast.classList.add("hiding");
+      pomodoroToastCleanupTimer = setTimeout(() => {
+        pomoToast.classList.add("hidden");
+        pomoToast.classList.remove("hiding");
+      }, 260);
+    }, 3000);
+  }
+
+  function applyPomodoroState(nextState, allowPhaseToast = false) {
+    if (!nextState) return;
+    pomodoroState = nextState;
+    renderPomodoro(pomodoroState, pomodoroSettings);
+
+    if (nextState.status === "stopped" && nextState.stopReason === "completed") {
+      setPomodoroSetupOpen(false);
+    }
+
+    const wasInitialized = hasInitializedPomodoroState;
+    hasInitializedPomodoroState = true;
+
+    const nextTransitionAt = Number(nextState.lastTransitionAt || 0);
+    if (nextTransitionAt && nextTransitionAt !== lastPomodoroTransitionAt) {
+      lastPomodoroTransitionAt = nextTransitionAt;
+      const shouldShowToast = premium && (nextState.isRunning || nextState.stopReason === "completed");
+      const shouldPlaySound =
+        shouldShowToast && soundEnabled && pomodoroSettings.pomodoroSoundEnabled !== false;
+      if (allowPhaseToast && wasInitialized && shouldPlaySound) {
+        try {
+          playAlertSound();
+        } catch (e) {
+          console.error("Pomodoro sound alert failed:", e);
+        }
+      }
+      if (allowPhaseToast && wasInitialized && shouldShowToast) {
+        showPomodoroToast(getPhaseToastMessage(nextState));
+      }
+    }
+  }
+
+  function applyPomodoroResponse(response, allowPhaseToast = false) {
+    if (response?.settings) {
+      applyPomodoroSettings(response.settings);
+    }
+    if (response?.state) {
+      applyPomodoroState(response.state, allowPhaseToast);
+    }
+  }
+
+  async function refreshPomodoroState(allowPhaseToast = false) {
+    const response = await sendPomodoroMessage("pomodoro:getState");
+    if (response?.ok && response.state) {
+      applyPomodoroResponse(response, allowPhaseToast);
+    } else {
+      if (response?.error) {
+        console.error("Pomodoro state fetch failed:", response.error);
+      }
+      renderPomodoro(pomodoroState, pomodoroSettings);
+      if (pomoStatus && response?.error) {
+        pomoStatus.textContent = "Worker unavailable";
+      }
+    }
+  }
+
+  await refreshPomodoroState(false);
+  setPomodoroDrawerOpen(false);
+  setPomodoroSetupOpen(false);
+
   // Start countdown ticker (updates every 250ms for smooth display)
   const tick = () => {
+    renderPomodoro(pomodoroState, pomodoroSettings);
     updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor).then(() => {
       if (soundPlayedFor !== isoLocal) {
         getSoundPlayedFor().then(val => soundPlayedFor = val);
@@ -534,6 +811,131 @@ async function init() {
   };
   tick();
   setInterval(tick, 250);
+
+  // Keep UI in sync when background worker updates Pomodoro state.
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local") return;
+    if (changes.pomodoroSettings?.newValue) {
+      applyPomodoroSettings(changes.pomodoroSettings.newValue);
+      if (isPomodoroSetupOpen) {
+        populatePomodoroSetupInputs();
+      }
+    }
+    if (changes.pomodoroState?.newValue) {
+      applyPomodoroState(changes.pomodoroState.newValue, true);
+    }
+  });
+
+  pomoToggleBtn?.addEventListener("click", () => {
+    if (!ensurePomodoroPremiumAccess()) return;
+    setPomodoroDrawerOpen(!isPomodoroDrawerOpen);
+  });
+
+  pomoSetupBtn?.addEventListener("click", () => {
+    if (!ensurePomodoroPremiumAccess()) return;
+    const nextOpen = !isPomodoroSetupOpen;
+    setPomodoroSetupOpen(nextOpen);
+    if (nextOpen) {
+      populatePomodoroSetupInputs();
+    }
+  });
+
+  pomoSetupCancelBtn?.addEventListener("click", () => {
+    setPomodoroSetupOpen(false);
+  });
+
+  pomoSetupView?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!ensurePomodoroPremiumAccess()) return;
+
+    const candidate = readPomodoroSetupInputs();
+    const validationError = validatePomodoroSettings(candidate);
+    if (validationError) {
+      if (pomoSetupError) {
+        pomoSetupError.textContent = validationError;
+        pomoSetupError.classList.remove("hidden");
+      }
+      return;
+    }
+
+    const saveBtn = $("pomoSetupSaveBtn");
+    if (saveBtn) saveBtn.disabled = true;
+
+    const response = await sendPomodoroMessage("pomodoro:updateSettings", { settings: candidate });
+    if (response?.ok) {
+      applyPomodoroResponse(response, false);
+      setPomodoroSetupOpen(false);
+    } else if (pomoSetupError) {
+      if (response?.error) {
+        console.error("Pomodoro settings update failed:", response.error);
+      }
+      pomoSetupError.textContent = response?.error || "Unable to save settings.";
+      pomoSetupError.classList.remove("hidden");
+    }
+
+    if (saveBtn) saveBtn.disabled = false;
+  });
+
+  pomoStartPauseBtn?.addEventListener("click", async () => {
+    if (!ensurePomodoroPremiumAccess()) return;
+    pomoStartPauseBtn.disabled = true;
+    const response = await sendPomodoroMessage("pomodoro:toggle");
+    if (response?.ok && response.state) {
+      applyPomodoroResponse(response, false);
+    } else if (pomoStatus) {
+      if (response?.error) {
+        console.error("Pomodoro start/pause failed:", response.error);
+      }
+      pomoStatus.textContent = "Start failed";
+    }
+    pomoStartPauseBtn.disabled = false;
+  });
+
+  pomoResetBtn?.addEventListener("click", async () => {
+    if (!ensurePomodoroPremiumAccess()) return;
+    pomoResetBtn.disabled = true;
+    const response = await sendPomodoroMessage("pomodoro:reset");
+    if (response?.ok && response.state) {
+      applyPomodoroResponse(response, false);
+    } else if (pomoStatus) {
+      if (response?.error) {
+        console.error("Pomodoro reset failed:", response.error);
+      }
+      pomoStatus.textContent = "Reset failed";
+    }
+    pomoResetBtn.disabled = false;
+  });
+
+  pomoSkipBtn?.addEventListener("click", async () => {
+    if (!ensurePomodoroPremiumAccess()) return;
+    pomoSkipBtn.disabled = true;
+    const response = await sendPomodoroMessage("pomodoro:skip");
+    if (response?.ok && response.state) {
+      applyPomodoroResponse(response, false);
+    } else if (pomoStatus) {
+      if (response?.error) {
+        console.error("Pomodoro skip failed:", response.error);
+      }
+      pomoStatus.textContent = "Skip failed";
+    }
+    pomoSkipBtn.disabled = false;
+  });
+
+  pomoStopBtn?.addEventListener("click", async () => {
+    if (!ensurePomodoroPremiumAccess()) return;
+    pomoStopBtn.disabled = true;
+    const response = await sendPomodoroMessage("pomodoro:stop");
+    if (response?.ok && response.state) {
+      applyPomodoroResponse(response, false);
+      setPomodoroSetupOpen(false);
+    } else if (pomoStatus) {
+      if (response?.error) {
+        console.error("Pomodoro stop failed:", response.error);
+      }
+      pomoStatus.textContent = "Stop failed";
+    }
+    pomoStopBtn.disabled = false;
+  });
 
   // ---------------------------------------------------------------------------
   // Date Modal Event Handlers
@@ -621,8 +1023,18 @@ async function init() {
       customColorPicker?.classList.add("hidden");
     }
 
+    if (pomoToggleBtn) {
+      pomoToggleBtn.classList.toggle("hidden", !premium);
+    }
+    if (!premium) {
+      setPomodoroDrawerOpen(false);
+    }
+
     updateCustomPreview();
   }
+
+  // Apply lock state immediately on page load.
+  updatePremiumUI();
 
   // Open settings modal
   settingsBtn.addEventListener("click", async () => {
@@ -691,15 +1103,6 @@ async function init() {
   colorText?.addEventListener("input", handleColorChange);
   colorMuted?.addEventListener("input", handleColorChange);
   colorBorder?.addEventListener("input", handleColorChange);
-
-  // ---------------------------------------------------------------------------
-  // License Modal Elements (declared early for use in other handlers)
-  // ---------------------------------------------------------------------------
-
-  const licenseModal = $("licenseModal");
-  const licenseInput = $("licenseInput");
-  const activateBtn = $("activateBtn");
-  const licenseError = $("licenseError");
 
   // ---------------------------------------------------------------------------
   // Background Image Elements & UI
@@ -980,6 +1383,7 @@ async function init() {
     if (e.key === "Escape") {
       if (!dateModal.classList.contains("hidden")) saveDateAndClose();
       if (!settingsModal.classList.contains("hidden")) closeSettingsModal();
+      if (isPomodoroDrawerOpen) setPomodoroDrawerOpen(false);
       if (licenseModal && !licenseModal.classList.contains("hidden")) {
         licenseModal.classList.add("hidden");
         licenseError?.classList.add("hidden");

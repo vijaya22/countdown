@@ -9,6 +9,12 @@
   </head>
   <body>
     <main class="wrap">
+        <button id="pomoToggleBtn" class="pomo-toggle-btn" aria-label="Toggle Pomodoro" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
         <button id="settingsBtn" class="settings-btn" aria-label="Settings">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
@@ -30,6 +36,70 @@
             <div id="statusText" class="statusText"></div>
           </div>
         </div>
+
+      <section id="pomoDrawer" class="pomo-drawer" aria-label="Pomodoro timer">
+        <div class="pomodoro-head">
+          <span class="pomodoro-title">Pomodoro</span>
+          <div class="pomodoro-head-actions">
+            <button id="pomoSetupBtn" class="pomo-head-btn" type="button">Setup</button>
+            <span id="pomoPhase" class="pomodoro-phase">Focus</span>
+          </div>
+        </div>
+
+        <div id="pomoMainView">
+          <div class="pomodoro-timer" aria-live="polite">
+            <span id="pomoMm">25</span><span class="pomodoro-sep">:</span><span id="pomoSs">00</span>
+          </div>
+
+          <div class="pomodoro-meta">
+            <span id="pomoStatus">Stopped</span>
+            <span id="pomoSessions">Focus sessions: 0</span>
+          </div>
+
+          <div class="pomodoro-controls pomodoro-controls-grid">
+            <button id="pomoStartPauseBtn" class="pomo-btn pomo-btn-primary" type="button">Start</button>
+            <button id="pomoSkipBtn" class="pomo-btn" type="button">Skip</button>
+            <button id="pomoResetBtn" class="pomo-btn" type="button">Reset</button>
+            <button id="pomoStopBtn" class="pomo-btn pomo-btn-danger" type="button">Stop</button>
+          </div>
+        </div>
+
+        <form id="pomoSetupView" class="pomo-setup hidden">
+          <label class="pomo-field">
+            <span>Focus (min)</span>
+            <input id="pomoFocusInput" class="input" type="number" min="1" max="180" step="1" />
+          </label>
+          <label class="pomo-field">
+            <span>Short break (min)</span>
+            <input id="pomoShortBreakInput" class="input" type="number" min="1" max="60" step="1" />
+          </label>
+          <label class="pomo-field">
+            <span>Long break (min)</span>
+            <input id="pomoLongBreakInput" class="input" type="number" min="1" max="120" step="1" />
+          </label>
+          <label class="pomo-field">
+            <span>Long break every (focus sessions)</span>
+            <input id="pomoLongEveryInput" class="input" type="number" min="2" max="12" step="1" />
+          </label>
+          <label class="pomo-field">
+            <span>Run for (focus intervals)</span>
+            <input id="pomoRunIntervalsInput" class="input" type="number" min="1" max="30" step="1" />
+          </label>
+          <label class="pomo-field pomo-field-inline">
+            <span>Pomodoro sound alerts</span>
+            <input id="pomoSoundToggleInput" class="toggle" type="checkbox" />
+          </label>
+
+          <div id="pomoSetupError" class="pomo-setup-error hidden"></div>
+
+          <div class="pomodoro-controls">
+            <button id="pomoSetupCancelBtn" class="pomo-btn" type="button">Cancel</button>
+            <button id="pomoSetupSaveBtn" class="pomo-btn pomo-btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </section>
+
+      <div id="pomoToast" class="pomo-toast hidden" role="status" aria-live="polite"></div>
 
       <!-- Date picker modal -->
       <section id="dateModal" class="modal hidden" role="dialog" aria-modal="true">

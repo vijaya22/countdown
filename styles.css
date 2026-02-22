@@ -53,6 +53,35 @@ body {
   color: var(--text);
 }
 
+.pomo-toggle-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  z-index: 20;
+}
+
+.pomo-toggle-btn:hover {
+  border-color: var(--text);
+}
+
+.pomo-toggle-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.pomo-toggle-btn.open svg {
+  transform: rotate(180deg);
+}
+
 .stage {
   display: grid;
   gap: 24px;
@@ -105,6 +134,229 @@ body {
 
 .statusText {
   margin-top: 6px;
+}
+
+.pomo-drawer {
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  width: min(340px, calc(100vw - 24px));
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  z-index: 15;
+}
+
+.pomo-drawer.open {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pomodoro-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pomodoro-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pomo-head-btn {
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pomo-head-btn:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.pomodoro-title {
+  font-size: 12px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pomodoro-phase {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.pomodoro-timer {
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(26px, 5vw, 36px);
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  color: var(--text);
+}
+
+.pomodoro-sep {
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+.pomodoro-meta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pomodoro-controls {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.pomodoro-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.pomo-btn {
+  min-width: 92px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pomo-btn:hover {
+  border-color: var(--muted);
+}
+
+.pomo-btn-primary {
+  border-color: var(--text);
+}
+
+.pomo-btn-primary:hover {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.pomo-btn-danger {
+  border-color: #b33b3b;
+  color: #b33b3b;
+}
+
+.pomo-btn-danger:hover {
+  background: #b33b3b;
+  color: #ffffff;
+}
+
+.pomo-setup {
+  margin-top: 8px;
+}
+
+.pomo-field {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.pomo-field span {
+  color: var(--muted);
+}
+
+.pomo-field-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pomo-field .input {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.pomo-setup-error {
+  margin-top: 6px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  color: #b33b3b;
+}
+
+.pomo-toast {
+  position: fixed;
+  top: 20px;
+  right: 64px;
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 13px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  transform: translateX(24px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 25;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.pomo-toast.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.pomo-toast.hiding {
+  transform: translateX(-28px);
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .pomo-toggle-btn {
+    top: 14px;
+    right: 14px;
+  }
+
+  .pomo-drawer {
+    top: 56px;
+    right: 12px;
+  }
+
+  .pomo-toast {
+    top: 14px;
+    right: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pomo-toggle-btn,
+  .pomo-toggle-btn svg,
+  .pomo-drawer,
+  .pomo-toast {
+    transition: none;
+  }
 }
 
 /* Modal */
