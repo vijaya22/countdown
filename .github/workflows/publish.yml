@@ -16,6 +16,8 @@ jobs:
         run: zip -r countdown.zip manifest.json newtab.html newtab.js styles.css constants.js content.js background.js assets/ lib/
 
       - name: Upload to Chrome Web Store
+        id: upload
+        continue-on-error: true
         uses: mnao305/chrome-extension-upload@v5.0.0
         with:
           file-path: countdown.zip
@@ -23,3 +25,52 @@ jobs:
           client-id: ${{ secrets.CHROME_CLIENT_ID }}
           client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
           refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+      - name: Debug Web Store Upload Error
+        if: steps.upload.outcome == 'failure'
+        env:
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_EXTENSION_ID: dbpmgoghpheaeldmfgifedhjbdookjbo
+        run: |
+          set -euo pipefail
+
+          TOKEN_RESPONSE=$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=${CHROME_CLIENT_ID}" \
+            -d "client_secret=${CHROME_CLIENT_SECRET}" \
+            -d "refresh_token=${CHROME_REFRESH_TOKEN}" \
+            -d "grant_type=refresh_token")
+          ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token // empty')
+
+          if [ -z "${ACCESS_TOKEN}" ]; then
+            echo "Failed to fetch OAuth token."
+            echo "${TOKEN_RESPONSE}"
+            exit 1
+          fi
+
+          echo "Retrying upload to print Chrome Web Store API error details..."
+          UPLOAD_HTTP_STATUS=$(curl -sS -o upload-debug-response.json -w "%{http_code}" \
+            -X PUT \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Type: application/zip" \
+            --data-binary @countdown.zip \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}")
+
+          echo "Upload HTTP status: ${UPLOAD_HTTP_STATUS}"
+          echo "Upload response body:"
+          cat upload-debug-response.json
+
+          echo
+          echo "Current item status endpoint response:"
+          curl -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "x-goog-api-version: 2" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}" | tee item-status-response.json
+
+      - name: Fail If Upload Step Failed
+        if: steps.upload.outcome == 'failure'
+        run: |
+          echo "Chrome Web Store upload failed. See debug output above."
+          exit 1
