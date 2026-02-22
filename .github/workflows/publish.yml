@@ -15,19 +15,7 @@ jobs:
       - name: Create ZIP
         run: zip -r countdown.zip manifest.json newtab.html newtab.js styles.css constants.js content.js background.js assets/ lib/
 
-      - name: Upload to Chrome Web Store
-        id: upload
-        continue-on-error: true
-        uses: mnao305/chrome-extension-upload@v5.0.0
-        with:
-          file-path: countdown.zip
-          extension-id: dbpmgoghpheaeldmfgifedhjbdookjbo
-          client-id: ${{ secrets.CHROME_CLIENT_ID }}
-          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
-          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
-
-      - name: Debug Web Store Upload Error
-        if: steps.upload.outcome == 'failure'
+      - name: Upload and Publish to Chrome Web Store
         env:
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
@@ -49,28 +37,41 @@ jobs:
             exit 1
           fi
 
-          echo "Retrying upload to print Chrome Web Store API error details..."
-          UPLOAD_HTTP_STATUS=$(curl -sS -o upload-debug-response.json -w "%{http_code}" \
-            -X PUT \
+          UPLOAD_RESPONSE=$(curl -sS -X PUT \
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
             -H "x-goog-api-version: 2" \
             -H "Content-Type: application/zip" \
             --data-binary @countdown.zip \
             "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}")
+          echo "Upload response:"
+          echo "${UPLOAD_RESPONSE}"
 
-          echo "Upload HTTP status: ${UPLOAD_HTTP_STATUS}"
-          echo "Upload response body:"
-          cat upload-debug-response.json
+          if echo "${UPLOAD_RESPONSE}" | jq -e '.error' >/dev/null; then
+            echo "Upload API returned an error."
+            exit 1
+          fi
 
-          echo
-          echo "Current item status endpoint response:"
-          curl -sS \
+          UPLOAD_STATE=$(echo "${UPLOAD_RESPONSE}" | jq -r '.uploadState // empty')
+          if [ "${UPLOAD_STATE}" != "SUCCESS" ]; then
+            echo "Unexpected upload state: ${UPLOAD_STATE}"
+            exit 1
+          fi
+
+          PUBLISH_RESPONSE=$(curl -sS -X POST \
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
             -H "x-goog-api-version: 2" \
-            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}" | tee item-status-response.json
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}/publish?publishTarget=default&projection=DRAFT")
+          echo "Publish response:"
+          echo "${PUBLISH_RESPONSE}"
 
-      - name: Fail If Upload Step Failed
-        if: steps.upload.outcome == 'failure'
-        run: |
-          echo "Chrome Web Store upload failed. See debug output above."
-          exit 1
+          if echo "${PUBLISH_RESPONSE}" | jq -e '.error' >/dev/null; then
+            echo "Publish API returned an error."
+            exit 1
+          fi
+
+          ITEM_STATUS_RESPONSE=$(curl -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "x-goog-api-version: 2" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}?projection=DRAFT")
+          echo "Item status response:"
+          echo "${ITEM_STATUS_RESPONSE}"
