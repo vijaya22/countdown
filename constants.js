@@ -113,5 +113,59 @@ const FONT_PRESETS = {
     name: "Tech",
     premium: true,
     family: '"Arial Narrow", "Avenir Next Condensed", "Roboto Condensed", sans-serif'
+  },
+  humanist: {
+    id: "humanist",
+    name: "Humanist",
+    premium: true,
+    family: '"Gill Sans", "Segoe UI", Tahoma, sans-serif'
+  },
+  newspaper: {
+    id: "newspaper",
+    name: "Newspaper",
+    premium: true,
+    family: '"Times New Roman", Times, Georgia, serif'
+  },
+  editorial: {
+    id: "editorial",
+    name: "Editorial",
+    premium: true,
+    family: '"Baskerville", "Palatino Linotype", Palatino, serif'
+  },
+  slab: {
+    id: "slab",
+    name: "Slab Serif",
+    premium: true,
+    family: '"Rockwell", "Courier New", Courier, serif'
+  },
+  condensed: {
+    id: "condensed",
+    name: "Condensed",
+    premium: true,
+    family: '"Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif'
+  },
+  geo: {
+    id: "geo",
+    name: "Geometric",
+    premium: true,
+    family: '"Century Gothic", "Avenir Next", Futura, sans-serif'
+  },
+  terminal: {
+    id: "terminal",
+    name: "Terminal",
+    premium: true,
+    family: '"Courier New", "Lucida Console", Monaco, monospace'
+  },
+  clean: {
+    id: "clean",
+    name: "Clean Sans",
+    premium: true,
+    family: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+  },
+  inscription: {
+    id: "inscription",
+    name: "Inscription",
+    premium: true,
+    family: '"Copperplate", "Palatino Linotype", serif'
   }
 };
