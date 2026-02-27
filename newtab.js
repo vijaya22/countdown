@@ -560,8 +560,21 @@ async function setCachedShareLink(url, targetIso) {
 /**
  * Plays a two-beep alert sound using Web Audio API
  */
+let sharedAudioCtx = null;
+
+function getAudioContext() {
+  if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (sharedAudioCtx.state === "suspended") {
+    void sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
 function playAlertSound() {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const audioCtx = getAudioContext();
+  const startAt = audioCtx.currentTime;
 
   // Play two beeps with 200ms gap
   [0, 0.2].forEach((delay) => {
@@ -575,11 +588,16 @@ function playAlertSound() {
     oscillator.type = "sine";
 
     // Fade out the beep
-    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + delay);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.15);
+    gainNode.gain.setValueAtTime(0.3, startAt + delay);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, startAt + delay + 0.15);
 
-    oscillator.start(audioCtx.currentTime + delay);
-    oscillator.stop(audioCtx.currentTime + delay + 0.15);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
+
+    oscillator.start(startAt + delay);
+    oscillator.stop(startAt + delay + 0.15);
   });
 }
 
@@ -593,8 +611,9 @@ function playAlertSound() {
  * @param {boolean} soundEnabled - Whether sound is enabled
  * @param {string} isoLocal - ISO string of target (for sound tracking)
  * @param {string} soundPlayedFor - ISO string of target sound was already played for
+ * @returns {boolean} True when countdown-end sound was triggered this tick
  */
-async function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor) {
+function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor) {
   const now = new Date();
   const diffMs = targetDate - now;
 
@@ -614,9 +633,9 @@ async function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFo
     // Play sound once when countdown ends
     if (soundEnabled && soundPlayedFor !== isoLocal) {
       playAlertSound();
-      await setSoundPlayedFor(isoLocal);
+      return true;
     }
-    return;
+    return false;
   }
 
   statusText.textContent = "";
@@ -630,6 +649,7 @@ async function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFo
   hh.textContent = pad2(hours);
   mm.textContent = pad2(minutes);
   ss.textContent = pad2(seconds);
+  return false;
 }
 
 function closeSettingsModal() {
@@ -852,11 +872,14 @@ async function init() {
   // Start countdown ticker (updates every 250ms for smooth display)
   const tick = () => {
     renderPomodoro(pomodoroState, pomodoroSettings);
-    updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor).then(() => {
-      if (soundPlayedFor !== isoLocal) {
-        getSoundPlayedFor().then(val => soundPlayedFor = val);
-      }
-    });
+    const shouldPersistSound = updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor);
+    if (shouldPersistSound) {
+      // Update local guard immediately so repeated ticks don't retrigger sound.
+      soundPlayedFor = isoLocal;
+      void setSoundPlayedFor(isoLocal).catch((e) => {
+        console.error("Failed to persist soundPlayedFor:", e);
+      });
+    }
   };
   tick();
   setInterval(tick, 250);
