@@ -12,7 +12,6 @@
     "newtab": "newtab.html"
   },
   "permissions": ["storage", "alarms", "notifications"],
-  "host_permissions": ["https://api2.amplitude.com/"],
   "background": {
     "service_worker": "background.js"
   },
