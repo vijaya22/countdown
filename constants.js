@@ -76,6 +76,34 @@ const THEME_PRESETS = {
   }
 };
 
+// Analytics event names
+const ANALYTICS_EVENTS = {
+  EXTENSION_INSTALLED:      "extension_installed",
+  EXTENSION_UPDATED:        "extension_updated",
+  SETTINGS_OPENED:          "settings_opened",
+  COUNTDOWN_SET:            "countdown_set",
+  COUNTDOWN_COMPLETED:      "countdown_completed",
+  SOUND_TOGGLED:            "sound_toggled",
+  THEME_CHANGED:            "theme_changed",
+  CLOCK_FONT_CHANGED:       "clock_font_changed",
+  TEXT_FONT_CHANGED:        "text_font_changed",
+  BACKGROUND_IMAGE_SET:     "background_image_set",
+  BACKGROUND_IMAGE_REMOVED: "background_image_removed",
+  UPGRADE_CLICKED:          "upgrade_clicked",
+  LICENSE_ACTIVATED:        "license_activated",
+  LICENSE_ACTIVATION_FAILED:"license_activation_failed",
+  SHARE_LINK_CREATED:       "share_link_created",
+  SHARE_LINK_COPIED:        "share_link_copied",
+  POMODORO_STARTED:         "pomodoro_started",
+  POMODORO_PAUSED:          "pomodoro_paused",
+  POMODORO_RESET:           "pomodoro_reset",
+  POMODORO_SKIPPED:         "pomodoro_skipped",
+  POMODORO_STOPPED:         "pomodoro_stopped",
+  POMODORO_CONFIGURED:      "pomodoro_configured",
+  POMODORO_PHASE_COMPLETED: "pomodoro_phase_completed",
+  POMODORO_RUN_COMPLETED:   "pomodoro_run_completed",
+};
+
 // Font presets
 const FONT_PRESETS = {
   default: {

@@ -613,7 +613,7 @@ async function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFo
 
     // Track and play sound once when countdown ends
     if (soundPlayedFor !== isoLocal) {
-      track("countdown_completed");
+      track(ANALYTICS_EVENTS.COUNTDOWN_COMPLETED);
       if (soundEnabled) playAlertSound();
       await setSoundPlayedFor(isoLocal);
     }
@@ -915,7 +915,7 @@ async function init() {
     if (response?.ok) {
       applyPomodoroResponse(response, false);
       setPomodoroSetupOpen(false);
-      track("pomodoro_configured", {
+      track(ANALYTICS_EVENTS.POMODORO_CONFIGURED, {
         focus_min: candidate.focusMinutes,
         short_break_min: candidate.shortBreakMinutes,
         long_break_min: candidate.longBreakMinutes,
@@ -939,7 +939,7 @@ async function init() {
     const response = await sendPomodoroMessage("pomodoro:toggle");
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
-      track(response.state.isRunning ? "pomodoro_started" : "pomodoro_paused");
+      track(response.state.isRunning ? ANALYTICS_EVENTS.POMODORO_STARTED : ANALYTICS_EVENTS.POMODORO_PAUSED);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro start/pause failed:", response.error);
@@ -955,7 +955,7 @@ async function init() {
     const response = await sendPomodoroMessage("pomodoro:reset");
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
-      track("pomodoro_reset");
+      track(ANALYTICS_EVENTS.POMODORO_RESET);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro reset failed:", response.error);
@@ -971,7 +971,7 @@ async function init() {
     const response = await sendPomodoroMessage("pomodoro:skip");
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
-      track("pomodoro_skipped");
+      track(ANALYTICS_EVENTS.POMODORO_SKIPPED);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro skip failed:", response.error);
@@ -988,7 +988,7 @@ async function init() {
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
       setPomodoroSetupOpen(false);
-      track("pomodoro_stopped");
+      track(ANALYTICS_EVENTS.POMODORO_STOPPED);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro stop failed:", response.error);
@@ -1011,7 +1011,7 @@ async function init() {
       targetDate = isoLocalToDate(isoLocal);
       targetText.textContent = `Target: ${formatLocal(targetDate)}`;
       const daysUntil = Math.ceil((targetDate - new Date()) / 86400000);
-      track("countdown_set", { days_until_target: daysUntil });
+      track(ANALYTICS_EVENTS.COUNTDOWN_SET, { days_until_target: daysUntil });
     }
     dateModal.classList.add("hidden");
   }
@@ -1142,7 +1142,7 @@ async function init() {
 
   // Open settings modal
   settingsBtn.addEventListener("click", async () => {
-    track("settings_opened");
+    track(ANALYTICS_EVENTS.SETTINGS_OPENED);
     soundToggle.checked = soundEnabled;
     // Refresh premium status from storage
     premium = await isPremium();
@@ -1155,7 +1155,7 @@ async function init() {
   soundToggle.addEventListener("change", async () => {
     soundEnabled = soundToggle.checked;
     await setSoundEnabled(soundEnabled);
-    track("sound_toggled", { enabled: soundEnabled });
+    track(ANALYTICS_EVENTS.SOUND_TOGGLED, { enabled: soundEnabled });
   });
 
   clockFontSelect?.addEventListener("change", async () => {
@@ -1168,7 +1168,7 @@ async function init() {
     clockFontId = normalizeFontId(clockFontSelect.value);
     await setClockFontId(clockFontId);
     syncFontUI();
-    track("clock_font_changed", { font_id: clockFontId });
+    track(ANALYTICS_EVENTS.CLOCK_FONT_CHANGED, { font_id: clockFontId });
   });
 
   textFontSelect?.addEventListener("change", async () => {
@@ -1181,7 +1181,7 @@ async function init() {
     textFontId = normalizeFontId(textFontSelect.value);
     await setTextFontId(textFontId);
     syncFontUI();
-    track("text_font_changed", { font_id: textFontId });
+    track(ANALYTICS_EVENTS.TEXT_FONT_CHANGED, { font_id: textFontId });
   });
 
   // Theme preset clicks
@@ -1214,7 +1214,7 @@ async function init() {
       await setThemeId(themeId);
       applyTheme(themeId, customTheme);
       updatePremiumUI();
-      track("theme_changed", { theme_id: themeId });
+      track(ANALYTICS_EVENTS.THEME_CHANGED, { theme_id: themeId });
     });
   });
 
@@ -1364,7 +1364,7 @@ async function init() {
     await setBackgroundImage(bgImage);
     applyBackgroundImage(bgImage);
     updateBgImageUI();
-    track("background_image_set");
+    track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_SET);
 
     closeCropModal();
   });
@@ -1383,7 +1383,7 @@ async function init() {
     await setBackgroundImage(null);
     applyBackgroundImage(null);
     updateBgImageUI();
-    track("background_image_removed");
+    track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_REMOVED);
   });
 
   // ---------------------------------------------------------------------------
@@ -1394,7 +1394,7 @@ async function init() {
   $("upgradeBtn")?.addEventListener("click", () => {
     licenseModal.classList.remove("hidden");
     licenseInput.focus();
-    track("upgrade_clicked");
+    track(ANALYTICS_EVENTS.UPGRADE_CLICKED);
   });
 
   // Activate license
@@ -1418,11 +1418,11 @@ async function init() {
       licenseInput.value = "";
       updatePremiumUI();
       updateBgImageUI();
-      track("license_activated");
+      track(ANALYTICS_EVENTS.LICENSE_ACTIVATED);
     } else {
       licenseError.textContent = result.error || "Activation failed";
       licenseError.classList.remove("hidden");
-      track("license_activation_failed", { error: result.error || "Activation failed" });
+      track(ANALYTICS_EVENTS.LICENSE_ACTIVATION_FAILED, { error: result.error || "Activation failed" });
     }
 
     activateBtn.disabled = false;
@@ -1453,7 +1453,7 @@ async function init() {
       if (cached && cached.targetIso === isoLocal) {
         // Reuse cached link (same target date)
         shareUrl = cached.url;
-        track("share_link_copied");
+        track(ANALYTICS_EVENTS.SHARE_LINK_COPIED);
       } else {
         // Create new share link via Cloudflare Worker
         const res = await fetch(`${WORKER_URL}/api/create`, {
@@ -1482,7 +1482,7 @@ async function init() {
           shareUrl = data.url;
           // Cache the link for future clicks
           await setCachedShareLink(shareUrl, isoLocal);
-          track("share_link_created");
+          track(ANALYTICS_EVENTS.SHARE_LINK_CREATED);
         }
       }
 
