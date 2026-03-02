@@ -1,3 +1,6 @@
+importScripts("constants.js");
+importScripts("analytics.js");
+
 const POMODORO_STORAGE_KEY = "pomodoroState";
 const POMODORO_SETTINGS_KEY = "pomodoroSettings";
 const POMODORO_ALARM_NAME = "pomodoro-phase-end";
@@ -230,6 +233,7 @@ async function transitionToNextPhase(state, settings, now = Date.now(), shouldNo
     if (shouldNotify) {
       await notifyRunCompleted();
     }
+    track(ANALYTICS_EVENTS.POMODORO_RUN_COMPLETED, { sessions_completed: completedFocusSessions });
     return stoppedState;
   }
 
@@ -252,6 +256,7 @@ async function transitionToNextPhase(state, settings, now = Date.now(), shouldNo
   if (shouldNotify) {
     await notifyPhaseTransition(fromPhase, nextPhase);
   }
+  track(ANALYTICS_EVENTS.POMODORO_PHASE_COMPLETED, { from_phase: fromPhase, to_phase: nextPhase });
   return nextState;
 }
 
@@ -435,7 +440,12 @@ async function handlePomodoroMessage(message) {
   return null;
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+    track(ANALYTICS_EVENTS.EXTENSION_INSTALLED);
+  } else if (details.reason === "update") {
+    track(ANALYTICS_EVENTS.EXTENSION_UPDATED, { previous_version: details.previousVersion });
+  }
   void ensurePomodoroScheduled();
 });
 

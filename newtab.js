@@ -630,9 +630,11 @@ function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor) {
     ss.textContent = pad2(seconds);
     statusText.textContent = "✅ Time's up!";
 
-    // Play sound once when countdown ends
-    if (soundEnabled && soundPlayedFor !== isoLocal) {
-      playAlertSound();
+    // Track and play sound once when countdown ends
+    if (soundPlayedFor !== isoLocal) {
+      track(ANALYTICS_EVENTS.COUNTDOWN_COMPLETED);
+      if (soundEnabled) playAlertSound();
+      setSoundPlayedFor(isoLocal);
       return true;
     }
     return false;
@@ -937,6 +939,13 @@ async function init() {
     if (response?.ok) {
       applyPomodoroResponse(response, false);
       setPomodoroSetupOpen(false);
+      track(ANALYTICS_EVENTS.POMODORO_CONFIGURED, {
+        focus_min: candidate.focusMinutes,
+        short_break_min: candidate.shortBreakMinutes,
+        long_break_min: candidate.longBreakMinutes,
+        long_break_every: candidate.longBreakEvery,
+        run_intervals: candidate.runIntervals
+      });
     } else if (pomoSetupError) {
       if (response?.error) {
         console.error("Pomodoro settings update failed:", response.error);
@@ -954,6 +963,7 @@ async function init() {
     const response = await sendPomodoroMessage("pomodoro:toggle");
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
+      track(response.state.isRunning ? ANALYTICS_EVENTS.POMODORO_STARTED : ANALYTICS_EVENTS.POMODORO_PAUSED);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro start/pause failed:", response.error);
@@ -969,6 +979,7 @@ async function init() {
     const response = await sendPomodoroMessage("pomodoro:reset");
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
+      track(ANALYTICS_EVENTS.POMODORO_RESET);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro reset failed:", response.error);
@@ -984,6 +995,7 @@ async function init() {
     const response = await sendPomodoroMessage("pomodoro:skip");
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
+      track(ANALYTICS_EVENTS.POMODORO_SKIPPED);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro skip failed:", response.error);
@@ -1000,6 +1012,7 @@ async function init() {
     if (response?.ok && response.state) {
       applyPomodoroResponse(response, false);
       setPomodoroSetupOpen(false);
+      track(ANALYTICS_EVENTS.POMODORO_STOPPED);
     } else if (pomoStatus) {
       if (response?.error) {
         console.error("Pomodoro stop failed:", response.error);
@@ -1021,6 +1034,8 @@ async function init() {
       await setTargetIsoLocal(isoLocal);
       targetDate = isoLocalToDate(isoLocal);
       targetText.textContent = `Target: ${formatLocal(targetDate)}`;
+      const daysUntil = Math.ceil((targetDate - new Date()) / 86400000);
+      track(ANALYTICS_EVENTS.COUNTDOWN_SET, { days_until_target: daysUntil });
     }
     dateModal.classList.add("hidden");
   }
@@ -1151,6 +1166,7 @@ async function init() {
 
   // Open settings modal
   settingsBtn.addEventListener("click", async () => {
+    track(ANALYTICS_EVENTS.SETTINGS_OPENED);
     soundToggle.checked = soundEnabled;
     // Refresh premium status from storage
     premium = await isPremium();
@@ -1163,6 +1179,7 @@ async function init() {
   soundToggle.addEventListener("change", async () => {
     soundEnabled = soundToggle.checked;
     await setSoundEnabled(soundEnabled);
+    track(ANALYTICS_EVENTS.SOUND_TOGGLED, { enabled: soundEnabled });
   });
 
   clockFontSelect?.addEventListener("change", async () => {
@@ -1175,6 +1192,7 @@ async function init() {
     clockFontId = normalizeFontId(clockFontSelect.value);
     await setClockFontId(clockFontId);
     syncFontUI();
+    track(ANALYTICS_EVENTS.CLOCK_FONT_CHANGED, { font_id: clockFontId });
   });
 
   textFontSelect?.addEventListener("change", async () => {
@@ -1187,6 +1205,7 @@ async function init() {
     textFontId = normalizeFontId(textFontSelect.value);
     await setTextFontId(textFontId);
     syncFontUI();
+    track(ANALYTICS_EVENTS.TEXT_FONT_CHANGED, { font_id: textFontId });
   });
 
   // Theme preset clicks
@@ -1219,6 +1238,7 @@ async function init() {
       await setThemeId(themeId);
       applyTheme(themeId, customTheme);
       updatePremiumUI();
+      track(ANALYTICS_EVENTS.THEME_CHANGED, { theme_id: themeId });
     });
   });
 
@@ -1368,6 +1388,7 @@ async function init() {
     await setBackgroundImage(bgImage);
     applyBackgroundImage(bgImage);
     updateBgImageUI();
+    track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_SET);
 
     closeCropModal();
   });
@@ -1386,6 +1407,7 @@ async function init() {
     await setBackgroundImage(null);
     applyBackgroundImage(null);
     updateBgImageUI();
+    track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_REMOVED);
   });
 
   // ---------------------------------------------------------------------------
@@ -1396,6 +1418,7 @@ async function init() {
   $("upgradeBtn")?.addEventListener("click", () => {
     licenseModal.classList.remove("hidden");
     licenseInput.focus();
+    track(ANALYTICS_EVENTS.UPGRADE_CLICKED);
   });
 
   // Activate license
@@ -1419,9 +1442,11 @@ async function init() {
       licenseInput.value = "";
       updatePremiumUI();
       updateBgImageUI();
+      track(ANALYTICS_EVENTS.LICENSE_ACTIVATED);
     } else {
       licenseError.textContent = result.error || "Activation failed";
       licenseError.classList.remove("hidden");
+      track(ANALYTICS_EVENTS.LICENSE_ACTIVATION_FAILED, { error: result.error || "Activation failed" });
     }
 
     activateBtn.disabled = false;
@@ -1452,6 +1477,7 @@ async function init() {
       if (cached && cached.targetIso === isoLocal) {
         // Reuse cached link (same target date)
         shareUrl = cached.url;
+        track(ANALYTICS_EVENTS.SHARE_LINK_COPIED);
       } else {
         // Create new share link via Cloudflare Worker
         const res = await fetch(`${WORKER_URL}/api/create`, {
@@ -1480,6 +1506,7 @@ async function init() {
           shareUrl = data.url;
           // Cache the link for future clicks
           await setCachedShareLink(shareUrl, isoLocal);
+          track(ANALYTICS_EVENTS.SHARE_LINK_CREATED);
         }
       }
 

@@ -1,90 +1,121 @@
 # Privacy Policy for Every Second Counts
 
-**Last updated:** February 27, 2026
+**Last updated:** March 2, 2026
 
 ## Overview
 
-Every Second Counts is a Chrome extension that replaces your new tab page with a countdown timer. It also includes optional features such as shareable countdown links and premium license activation.
+Every Second Counts is a Chrome extension that replaces your new tab page with a live countdown timer. This policy explains what data is stored, what is transmitted, and to whom.
 
-We designed the extension to collect as little data as possible. Most settings are stored in Chrome storage under your browser profile.
+---
 
-## What Data Is Stored in the Extension
+## Data Stored Locally
 
-The extension stores the following data in Chrome storage:
+### Chrome Synced Storage (`chrome.storage.sync`)
+The following preferences are stored and synced across your signed-in Chrome browsers (if Chrome Sync is enabled):
 
-### `chrome.storage.sync` (syncs with your signed-in Chrome profile)
+| Data | Purpose |
+|------|---------|
+| Target date/time | Your countdown target |
+| Sound alert preference | Whether the completion sound is enabled |
+| Theme selection | Your chosen colour theme |
+| Custom theme colours | Your custom background, text, and border colours |
+| Clock and text font selection | Your chosen fonts |
+| Cached share link | The last generated share URL and the target it was created for |
+| License key and status | Premium license key, activation status, and expiry (premium users only) |
 
-- Countdown target date/time (`targetIsoLocal`)
-- Countdown sound preferences (`soundEnabled`, `soundPlayedFor`)
-- Theme and appearance settings (`themeId`, `customTheme`)
-- Font settings (`clockFontId`, `textFontId`)
-- Cached share link for the current target (`shareLink`)
-- Premium license status (`license`, including key, status, validation timestamp, and expiry if applicable)
+If Chrome Sync is enabled, this data is transmitted to and stored on Google's servers per [Google's Privacy Policy](https://policies.google.com/privacy).
 
-### `chrome.storage.local` (stored only on your current device)
+### Device-Local Storage (`chrome.storage.local`)
+The following data is stored only on your device and is never synced:
 
-- Background image data (`bgImage`)
-- Pomodoro timer state and settings (`pomodoroState`, `pomodoroSettings`)
+| Data | Purpose |
+|------|---------|
+| Background image | Your uploaded background photo (stored as a compressed JPEG, max 1920px) |
+| Pomodoro timer state | Current phase, remaining time, and session count |
+| Pomodoro settings | Focus and break durations, interval count |
+| Analytics device ID | A randomly generated UUID used to distinguish devices in analytics (see below) |
 
-## Network Requests and External Services
+---
 
-The extension does not send your browsing history, page content, or personal files to our servers.
+## Data Transmitted to External Servers
 
-Network requests happen only when you use specific optional features:
+### 1. Usage Analytics
+**When:** On every key interaction (e.g. opening settings, setting a countdown, changing a theme).
+**What is sent:** An event name, a random device ID (UUID), a timestamp, and event-specific properties such as `days_until_target`, `theme_id`, or `font_id`. No personal information is included.
+**Route:** Extension -> Cloudflare Worker -> Amplitude Analytics
+**Why proxied:** The Amplitude API key is stored as a Cloudflare secret and never included in the extension code.
 
-### 1) Share Countdown Links
+Events tracked include: extension install/update, countdown set and completed, settings opened, sound toggled, theme and font changes, background image set/removed, share link created/copied, upgrade button clicked, license activation success/failure, and all Pomodoro timer interactions.
 
-When you create a share link, the extension sends the countdown target (and title) to our Cloudflare Worker service at:
+### 2. License Validation (Premium Users Only)
+**When:** When you activate a license key, and once every 7 days thereafter to confirm it remains valid.
+**What is sent:** Your license key.
+**Route:** Extension -> Cloudflare Worker -> LemonSqueezy
+**Stored:** Cloudflare caches the validation result for a period to reduce API calls. The license key and status are also stored locally (see above).
 
-- `https://countdown.everysecondcounts.workers.dev`
+### 3. Countdown Sharing (Optional)
+**When:** Only if you click the Share button.
+**What is sent:** Your countdown target date/time and the title "Every Second Counts".
+**Route:** Extension -> Cloudflare Worker -> Cloudflare KV store
+**Stored:** Countdown data is stored on Cloudflare for 90 days, accessible via a unique share URL.
 
-The service stores shared countdown data for up to **90 days** and returns a public link. Anyone with that link can view the shared countdown.
+---
 
-For abuse prevention, the share service applies rate limiting and stores a temporary counter associated with request IP metadata for up to **1 hour**.
+## Third-Party Services
 
-### 2) Premium License Activation and Validation
+| Service | Purpose | Privacy Policy |
+|---------|---------|----------------|
+| **Amplitude** | Usage analytics | [amplitude.com/privacy](https://amplitude.com/privacy) |
+| **LemonSqueezy** | License validation (premium users only) | [lemonsqueezy.com/privacy](https://www.lemonsqueezy.com/privacy) |
+| **Cloudflare** | Backend infrastructure (analytics proxy, licensing, sharing) | [cloudflare.com/privacypolicy](https://www.cloudflare.com/privacypolicy/) |
+| **Google** | Chrome Sync (if enabled by you in Chrome) | [policies.google.com/privacy](https://policies.google.com/privacy) |
 
-When you activate or validate a premium license, the extension sends your entered license key to our Worker endpoint:
+---
 
-- `POST /api/license/activate`
-- `POST /api/license/validate`
+## Permissions
 
-The Worker validates the key with Lemon Squeezy and caches license status for up to **30 days**.
+| Permission | Why it's needed |
+|-----------|----------------|
+| `storage` | Save your preferences and timer state locally |
+| `alarms` | Trigger Pomodoro phase transitions when the timer expires |
+| `notifications` | Show a system notification when a Pomodoro phase ends |
+| New Tab Override | Replace the default new tab page with the countdown |
 
-Third party involved for license verification:
+The extension also runs a content script on `https://countdown.everysecondcounts.workers.dev/*` to allow saving a shared countdown directly to the extension from the sharing page.
 
-- Lemon Squeezy: [https://www.lemonsqueezy.com/privacy](https://www.lemonsqueezy.com/privacy)
+---
 
-## Chrome Permissions Used
+## What We Do Not Collect
 
-The extension requests only these permissions:
+- No names, email addresses, or account information
+- No browsing history or URLs visited
+- No location data
+- No microphone or camera access
+- Background images are processed entirely on your device and never uploaded to any server
 
-- `storage`: Save countdown, theme, font, license, and other settings
-- `alarms`: Keep Pomodoro phase timing accurate
-- `notifications`: Show Pomodoro transition/completion notifications
+---
 
-The extension also includes a content script on its own share domain to support “Save to Extension” from shared countdown pages.
+## Data Retention
 
-## What We Do Not Do
+| Data | Retention |
+|------|-----------|
+| Local preferences and timer state | Until you uninstall the extension or clear extension storage |
+| Background image | Until you remove it or uninstall the extension |
+| Analytics device ID | Until you uninstall the extension or clear extension storage |
+| Share link data (Cloudflare) | 90 days |
+| Analytics events (Amplitude) | Per Amplitude's data retention policy |
+| License validation cache (Cloudflare) | Up to 24 hours |
 
-- No ads
-- No analytics or tracking SDKs
-- No sale of personal data
-- No reading of your browsing history
-- No collection of the content of websites you visit
+---
 
-## Data Retention and Deletion
+## Your Choices
 
-- Local/sync settings remain until you change them, clear browser data, or uninstall the extension.
-- Shared countdown links expire automatically after up to 90 days.
-- Rate-limit counters expire after up to 1 hour.
-- Cached license validation data expires after up to 30 days.
+- **Analytics:** The device ID is a random UUID with no connection to your identity. There is currently no opt-out mechanism in the extension UI.
+- **Chrome Sync:** You can disable Chrome Sync in Chrome settings to prevent your preferences from being sent to Google.
+- **Sharing:** Share link creation is entirely optional and only occurs when you click the Share button.
+- **Premium features:** License validation is only triggered if you have entered a license key.
 
-You can remove extension-stored data by uninstalling the extension and/or clearing extension storage in Chrome.
-
-## Changes to This Policy
-
-We may update this policy as features evolve. The “Last updated” date will reflect the latest version.
+---
 
 ## Contact
 

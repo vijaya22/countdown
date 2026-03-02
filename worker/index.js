@@ -403,6 +403,35 @@ export default {
       }
     }
 
+    // API: Analytics proxy — forwards events to Amplitude using server-side API key
+    if (path === '/api/analytics' && request.method === 'POST') {
+      try {
+        const { events } = await request.json();
+
+        if (!Array.isArray(events) || events.length === 0) {
+          return new Response(JSON.stringify({ error: 'Invalid events' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        await fetch('https://api2.amplitude.com/2/httpapi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: env.AMPLITUDE_API_KEY, events })
+        });
+
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // API: Create new countdown
     if (path === '/api/create' && request.method === 'POST') {
       try {
