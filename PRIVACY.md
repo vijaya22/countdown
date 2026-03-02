@@ -42,7 +42,7 @@ The following data is stored only on your device and is never synced:
 ### 1. Usage Analytics
 **When:** On every key interaction (e.g. opening settings, setting a countdown, changing a theme).
 **What is sent:** An event name, a random device ID (UUID), a timestamp, and event-specific properties such as `days_until_target`, `theme_id`, or `font_id`. No personal information is included.
-**Route:** Extension → your Cloudflare Worker → Amplitude Analytics
+**Route:** Extension -> Cloudflare Worker -> Amplitude Analytics
 **Why proxied:** The Amplitude API key is stored as a Cloudflare secret and never included in the extension code.
 
 Events tracked include: extension install/update, countdown set and completed, settings opened, sound toggled, theme and font changes, background image set/removed, share link created/copied, upgrade button clicked, license activation success/failure, and all Pomodoro timer interactions.
@@ -50,13 +50,13 @@ Events tracked include: extension install/update, countdown set and completed, s
 ### 2. License Validation (Premium Users Only)
 **When:** When you activate a license key, and once every 7 days thereafter to confirm it remains valid.
 **What is sent:** Your license key.
-**Route:** Extension → your Cloudflare Worker → LemonSqueezy
+**Route:** Extension -> Cloudflare Worker -> LemonSqueezy
 **Stored:** Cloudflare caches the validation result for a period to reduce API calls. The license key and status are also stored locally (see above).
 
 ### 3. Countdown Sharing (Optional)
 **When:** Only if you click the Share button.
 **What is sent:** Your countdown target date/time and the title "Every Second Counts".
-**Route:** Extension → your Cloudflare Worker → Cloudflare KV store
+**Route:** Extension -> Cloudflare Worker -> Cloudflare KV store
 **Stored:** Countdown data is stored on Cloudflare for 90 days, accessible via a unique share URL.
 
 ---
@@ -119,4 +119,5 @@ The extension also runs a content script on `https://countdown.everysecondcounts
 
 ## Contact
 
-If you have questions about this privacy policy, please open an issue on the [GitHub repository](https://github.com/vijaya22/countdown).
+If you have questions, open an issue on GitHub:
+[https://github.com/vijaya22/countdown](https://github.com/vijaya22/countdown)
