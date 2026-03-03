@@ -42,17 +42,97 @@ body {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  background: none;
-  border: none;
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: color 0.15s ease;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  z-index: 20;
 }
 
 .settings-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--text);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.2);
+}
+
+.settings-btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.settings-btn-icon {
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+
+.settings-btn-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.settings-pro-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  border-radius: 999px;
+  padding: 3px 6px;
+}
+
+.settings-btn.settings-btn-upsell {
+  border-color: rgba(201, 156, 76, 0.6);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(201, 156, 76, 0.24);
+}
+
+.settings-btn.settings-btn-upsell .settings-pro-badge {
+  border-color: rgba(201, 156, 76, 0.5);
+  background: rgba(201, 156, 76, 0.12);
   color: var(--text);
+}
+
+.settings-btn.attention {
+  animation: settings-btn-pulse 1.9s ease-in-out 3;
+}
+
+.settings-btn.attention .settings-pro-badge {
+  animation: settings-badge-glow 1.9s ease-in-out 3;
+}
+
+@keyframes settings-btn-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.16),
+      0 0 0 1px rgba(201, 156, 76, 0.24);
+  }
+  50% {
+    box-shadow:
+      0 16px 36px rgba(0, 0, 0, 0.24),
+      0 0 0 6px rgba(201, 156, 76, 0.16);
+  }
+}
+
+@keyframes settings-badge-glow {
+  0%,
+  100% {
+    background: rgba(201, 156, 76, 0.12);
+  }
+  50% {
+    background: rgba(201, 156, 76, 0.26);
+  }
 }
 
 .pomo-toggle-btn {
@@ -339,6 +419,22 @@ body {
 }
 
 @media (max-width: 640px) {
+  .settings-btn {
+    right: 12px;
+    bottom: 14px;
+    padding: 9px 12px;
+    gap: 6px;
+  }
+
+  .settings-btn-text {
+    font-size: 12px;
+  }
+
+  .settings-pro-badge {
+    font-size: 9px;
+    padding: 3px 5px;
+  }
+
   .pomo-toggle-btn {
     top: 14px;
     right: 14px;
@@ -356,11 +452,17 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .settings-btn,
   .pomo-toggle-btn,
   .pomo-toggle-btn svg,
   .pomo-drawer,
   .pomo-toast {
     transition: none;
+  }
+
+  .settings-btn.attention,
+  .settings-btn.attention .settings-pro-badge {
+    animation: none;
   }
 }
 
@@ -372,6 +474,7 @@ body {
   place-items: center;
   background: rgba(0, 0, 0, 0.2);
   padding: 20px;
+  z-index: 40;
 }
 
 #settingsModal {

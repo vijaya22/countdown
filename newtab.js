@@ -51,6 +51,7 @@ const dtInput = $("dtInput");
 // Settings modal elements
 const settingsModal = $("settingsModal");
 const settingsBtn = $("settingsBtn");
+const settingsProBadge = $("settingsProBadge");
 const soundToggle = $("soundToggle");
 const fontSection = $("fontSection");
 const fontLock = $("fontLock");
@@ -656,6 +657,8 @@ function updateCountdown(targetDate, soundEnabled, isoLocal, soundPlayedFor) {
 
 function closeSettingsModal() {
   settingsModal.classList.add("hidden");
+  settingsBtn?.classList.remove("hidden");
+  settingsBtn?.setAttribute("aria-expanded", "false");
 }
 
 // =============================================================================
@@ -682,6 +685,8 @@ async function init() {
   let customTheme = await getCustomTheme();
   let premium = await isPremium();
   let bgImage = await getBackgroundImage();
+  let hasPlayedSettingsAttention = false;
+  let settingsAttentionTimer = null;
 
   // Apply theme immediately
   applyTheme(themeId, customTheme);
@@ -1105,6 +1110,22 @@ async function init() {
       $("premiumBanner")?.classList.add("hidden");
       $("upgradeBanner")?.classList.remove("hidden");
     }
+    settingsProBadge?.classList.toggle("hidden", premium);
+    settingsBtn?.classList.toggle("settings-btn-upsell", !premium);
+    if (premium) {
+      settingsBtn?.classList.remove("attention");
+      if (settingsAttentionTimer) {
+        clearTimeout(settingsAttentionTimer);
+        settingsAttentionTimer = null;
+      }
+    } else if (!hasPlayedSettingsAttention && settingsModal.classList.contains("hidden")) {
+      hasPlayedSettingsAttention = true;
+      settingsBtn?.classList.add("attention");
+      settingsAttentionTimer = setTimeout(() => {
+        settingsBtn?.classList.remove("attention");
+        settingsAttentionTimer = null;
+      }, 5800);
+    }
 
     // Update theme preset buttons
     document.querySelectorAll(".theme-preset").forEach(btn => {
@@ -1172,6 +1193,9 @@ async function init() {
     premium = await isPremium();
     updatePremiumUI();
     updateBgImageUI();
+    settingsBtn.classList.add("hidden");
+    settingsBtn.setAttribute("aria-expanded", "true");
+    settingsBtn.classList.remove("attention");
     settingsModal.classList.remove("hidden");
   });
 
