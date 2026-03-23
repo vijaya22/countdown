@@ -26,20 +26,27 @@
           <span id="settingsProBadge" class="settings-pro-badge">Pro</span>
         </button>
 
-        <div class="stage">
-          <div class="timer" aria-live="polite">
-            <span class="time" id="hh">00</span><span class="sep">:</span>
-            <span class="time" id="mm">00</span><span class="sep">:</span>
-            <span class="time" id="ss">00</span>
-          </div>
+        <div id="mainZone" class="main-zone">
+          <div id="mainCountdownLabel" class="main-countdown-label hidden"></div>
+          <div class="stage">
+            <div class="timer" aria-live="polite">
+              <span class="time" id="hh">00</span><span class="sep">:</span>
+              <span class="time" id="mm">00</span><span class="sep">:</span>
+              <span class="time" id="ss">00</span>
+            </div>
 
-          <div class="plaque">EVERY SECOND COUNTS</div>
+            <div class="plaque">EVERY SECOND COUNTS</div>
 
-          <div class="meta">
-            <div id="targetText" class="targetText"></div>
-            <div id="statusText" class="statusText"></div>
+            <div class="meta">
+              <div id="targetText" class="targetText"></div>
+              <div id="statusText" class="statusText"></div>
+            </div>
           </div>
         </div>
+
+        <section id="cardsZone" class="cards-zone hidden" aria-label="Other countdowns">
+          <button id="addCountdownBtn" class="add-countdown-btn" aria-label="Add countdown">+ Add countdown</button>
+        </section>
 
       <section id="pomoDrawer" class="pomo-drawer" aria-label="Pomodoro timer">
         <div class="pomodoro-head">
@@ -260,6 +267,107 @@
             <a href="https://everysecondcounts.lemonsqueezy.com/checkout/buy/9f98a788-97b6-41fb-bd90-4a1984fb02d7" target="_blank" class="buy-link">Buy License</a>
           </div>
           <div id="licenseError" class="license-error hidden"></div>
+        </div>
+      </section>
+
+      <!-- Add Countdown Modal -->
+      <section id="addCountdownModal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="card">
+          <div class="cardTitle">Add Countdown</div>
+          <label class="pomo-field">
+            <span>Label</span>
+            <input id="addLabelInput" type="text" class="input" placeholder="e.g. New Year" maxlength="40" />
+          </label>
+          <label class="pomo-field" style="margin-top:10px;">
+            <span>Target date</span>
+            <input id="addDateInput" type="datetime-local" class="input" style="margin-top:6px;" />
+          </label>
+          <div id="addCountdownError" class="license-error hidden" style="margin-top:8px;"></div>
+          <div class="license-actions" style="margin-top:16px;">
+            <button id="addCountdownCancelBtn" class="buy-link" type="button">Cancel</button>
+            <button id="addCountdownSaveBtn" class="primary-btn" type="button">Add</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Edit Countdown Modal -->
+      <section id="editCountdownModal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="card edit-countdown-card">
+          <div class="cardTitle">Edit Countdown</div>
+          <input type="hidden" id="editCountdownId" />
+          <label class="pomo-field">
+            <span>Label</span>
+            <input id="editLabelInput" type="text" class="input" maxlength="40" />
+          </label>
+          <label class="pomo-field" style="margin-top:10px;">
+            <span>Target date</span>
+            <input id="editDateInput" type="datetime-local" class="input" style="margin-top:6px;" />
+          </label>
+          <div class="theme-section" style="margin-top:12px;">
+            <div class="section-label">Theme</div>
+            <div class="theme-presets edit-theme-presets">
+              <button class="theme-preset edit-theme-preset" data-theme="light">
+                <span class="preset-preview" style="background:#f5f5f3;border:1px solid #e0e0e0;"></span>
+                <span class="preset-name">Light</span>
+              </button>
+              <button class="theme-preset edit-theme-preset" data-theme="dark">
+                <span class="preset-preview" style="background:#1a1a1a;"></span>
+                <span class="preset-name">Dark</span>
+              </button>
+              <button class="theme-preset edit-theme-preset" data-theme="ocean">
+                <span class="preset-preview" style="background:#0f1419;"></span>
+                <span class="preset-name">Ocean</span>
+                <span class="lock-icon edit-theme-lock">🔒</span>
+              </button>
+              <button class="theme-preset edit-theme-preset" data-theme="sunset">
+                <span class="preset-preview" style="background:#1a1418;"></span>
+                <span class="preset-name">Sunset</span>
+                <span class="lock-icon edit-theme-lock">🔒</span>
+              </button>
+              <button class="theme-preset edit-theme-preset" data-theme="forest">
+                <span class="preset-preview" style="background:#0d1a0d;"></span>
+                <span class="preset-name">Forest</span>
+                <span class="lock-icon edit-theme-lock">🔒</span>
+              </button>
+              <button class="theme-preset edit-theme-preset" data-theme="custom">
+                <span class="preset-preview"></span>
+                <span class="preset-name">Custom</span>
+                <span class="lock-icon edit-theme-lock">🔒</span>
+              </button>
+            </div>
+          </div>
+          <div id="editFontSection" class="font-section" style="margin-top:12px;">
+            <div class="section-label">
+              Fonts
+              <span id="editFontLock" class="font-lock">🔒</span>
+            </div>
+            <label class="font-row">
+              <span>Clock</span>
+              <select id="editClockFontSelect" class="font-select"></select>
+            </label>
+            <label class="font-row">
+              <span>Text</span>
+              <select id="editTextFontSelect" class="font-select"></select>
+            </label>
+          </div>
+          <div class="bg-image-section" style="margin-top:12px;">
+            <div class="bg-image-row">
+              <span>Background image</span>
+              <div class="bg-image-actions">
+                <label id="editBgImageLabel" class="bg-image-btn">
+                  Upload
+                  <input type="file" id="editBgImageInput" accept="image/*" hidden />
+                </label>
+                <button id="editBgImageRemove" class="bg-image-remove hidden">Remove</button>
+              </div>
+            </div>
+            <span class="lock-icon" id="editBgImageLock">🔒</span>
+          </div>
+          <div id="editCountdownError" class="license-error hidden" style="margin-top:8px;"></div>
+          <div class="license-actions" style="margin-top:16px;">
+            <button id="editCountdownCancelBtn" class="buy-link" type="button">Cancel</button>
+            <button id="editCountdownSaveBtn" class="primary-btn" type="button">Save</button>
+          </div>
         </div>
       </section>
 
