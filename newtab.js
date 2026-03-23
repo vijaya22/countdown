@@ -1799,10 +1799,6 @@ async function init() {
     $("addCountdownModal")?.classList.add("hidden");
   });
 
-  $("addCountdownModal")?.addEventListener("click", (e) => {
-    if (e.target === $("addCountdownModal")) $("addCountdownModal").classList.add("hidden");
-  });
-
   $("addCountdownSaveBtn")?.addEventListener("click", async () => {
     const label = $("addLabelInput")?.value.trim() || "";
     const dateVal = $("addDateInput")?.value?.trim();
@@ -1890,10 +1886,6 @@ async function init() {
   }
 
   $("editCountdownCancelBtn")?.addEventListener("click", closeEditCountdownModal);
-
-  $("editCountdownModal")?.addEventListener("click", (e) => {
-    if (e.target === $("editCountdownModal")) closeEditCountdownModal();
-  });
 
   // Edit modal theme preset clicks
   document.querySelectorAll(".edit-theme-preset").forEach(btn => {
