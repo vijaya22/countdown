@@ -1092,7 +1092,7 @@ body.has-bg-image .card {
    Multi-Countdown Layout
    ============================================================ */
 
-.wrap.wrap--multi {
+.wrap {
   height: auto;
   min-height: 100%;
   display: flex;
@@ -1102,15 +1102,11 @@ body.has-bg-image .card {
 }
 
 .main-zone {
+  flex: 1;
   display: grid;
   place-items: center;
   padding: 40px 24px 24px;
-  min-height: 55vh;
   position: relative;
-}
-
-.wrap:not(.wrap--multi) .main-zone {
-  display: contents;
 }
 
 .main-countdown-label {
@@ -1194,34 +1190,7 @@ body.has-bg-image .card {
   color: #dc3545;
 }
 
-/* Floating add countdown button (always visible, bottom-left) */
-.add-countdown-float-btn {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
-  color: var(--muted);
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-  transition: transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-  z-index: 20;
-}
-
-.add-countdown-float-btn:hover {
-  transform: translateY(-1px);
-  border-color: var(--text);
-  color: var(--text);
-}
-
-/* Add countdown button (card-shaped dashed border, inside cards grid) */
+/* Add countdown button (dashed card, always visible in cards zone) */
 .add-countdown-btn {
   border: 1.5px dashed var(--border);
   border-radius: 12px;

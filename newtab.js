@@ -907,8 +907,8 @@ async function init() {
         applyFontPreferences(clockFontId, textFontId, premium);
         targetText.textContent = `Target: ${formatLocal(targetDate)}`;
       }
-      updateLayoutMode();
       renderCardGrid();
+      updateLayoutMode();
     }
   });
 
@@ -1597,8 +1597,6 @@ async function init() {
 
   function updateLayoutMode() {
     const isMulti = countdowns.length > 1;
-    document.querySelector(".wrap")?.classList.toggle("wrap--multi", isMulti);
-    $("cardsZone")?.classList.toggle("hidden", !isMulti);
     const mainLabel = $("mainCountdownLabel");
     if (mainLabel) {
       mainLabel.classList.toggle("hidden", !isMulti);
@@ -1792,7 +1790,6 @@ async function init() {
     $("addCountdownModal")?.classList.remove("hidden");
   }
 
-  $("addCountdownFloatBtn")?.addEventListener("click", openAddCountdownModal);
   $("addCountdownBtn")?.addEventListener("click", openAddCountdownModal);
 
   $("addCountdownCancelBtn")?.addEventListener("click", () => {
