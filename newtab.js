@@ -1644,14 +1644,6 @@ async function init() {
     countdowns.filter(c => !c.isMain).forEach(c => {
       cardsZone.appendChild(buildCountdownCard(c));
     });
-    // Dashed "add" card at the end of the grid
-    const addCard = document.createElement("button");
-    addCard.id = "addCountdownBtn";
-    addCard.className = "add-countdown-btn";
-    addCard.setAttribute("aria-label", "Add countdown");
-    addCard.textContent = "+ Add countdown";
-    addCard.addEventListener("click", openAddCountdownModal);
-    cardsZone.appendChild(addCard);
   }
 
   // Card ticker — updates time displays on secondary cards
@@ -1790,6 +1782,7 @@ async function init() {
     $("addCountdownModal")?.classList.remove("hidden");
   }
 
+  $("addCountdownFloatBtn")?.addEventListener("click", openAddCountdownModal);
   $("addCountdownBtn")?.addEventListener("click", openAddCountdownModal);
 
   $("addCountdownCancelBtn")?.addEventListener("click", () => {
