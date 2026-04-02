@@ -102,6 +102,10 @@ const ANALYTICS_EVENTS = {
   POMODORO_CONFIGURED:      "pomodoro_configured",
   POMODORO_PHASE_COMPLETED: "pomodoro_phase_completed",
   POMODORO_RUN_COMPLETED:   "pomodoro_run_completed",
+  COUNTDOWN_ADDED:          "countdown_added",
+  COUNTDOWN_DELETED:        "countdown_deleted",
+  COUNTDOWN_SET_MAIN:       "countdown_set_main",
+  COUNTDOWN_CARD_SHARED:    "countdown_card_shared",
 };
 
 // Font presets

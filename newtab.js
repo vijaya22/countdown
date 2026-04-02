@@ -298,40 +298,123 @@ function getTodayEOD() {
   return `${year}-${month}-${day}T23:59`;
 }
 
-/**
- * Gets the target date from storage
- * @returns {Promise<string>} ISO local string of target date
- */
-async function getTargetIsoLocal() {
-  const result = await chrome.storage.sync.get('targetIsoLocal');
-  // If no target set, use today's end of day
-  if (!result.targetIsoLocal) {
-    return getTodayEOD();
+// =============================================================================
+// Multi-Countdown Storage
+// =============================================================================
+
+function generateId() {
+  return crypto.randomUUID();
+}
+
+function createDefaultCountdown(label, targetIsoLocal, isMain) {
+  return {
+    id: generateId(),
+    label: label || '',
+    targetIsoLocal: targetIsoLocal || getTodayEOD(),
+    themeId: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+    customColors: null,
+    clockFontId: 'default',
+    textFontId: 'default',
+    isMain: Boolean(isMain),
+    shareLink: null
+  };
+}
+
+async function getCountdowns() {
+  const { countdowns = null } = await chrome.storage.sync.get({ countdowns: null });
+  return countdowns;
+}
+
+async function saveCountdowns(arr) {
+  await chrome.storage.sync.set({ countdowns: arr });
+}
+
+function getMainCountdown(arr) {
+  return arr.find(c => c.isMain) || arr[0];
+}
+
+function setMainCountdown(arr, id) {
+  arr.forEach(c => { c.isMain = (c.id === id); });
+}
+
+async function getBgImages() {
+  const { bgImages = {} } = await chrome.storage.local.get({ bgImages: {} });
+  return bgImages;
+}
+
+async function saveBgImage(id, data) {
+  const bgImages = await getBgImages();
+  bgImages[id] = data;
+  await chrome.storage.local.set({ bgImages });
+}
+
+async function removeBgImage(id) {
+  const bgImages = await getBgImages();
+  delete bgImages[id];
+  await chrome.storage.local.set({ bgImages });
+}
+
+async function migrateStorageIfNeeded() {
+  const existing = await getCountdowns();
+  if (existing !== null) return;
+
+  // Read all legacy flat keys
+  const syncData = await chrome.storage.sync.get({
+    targetIsoLocal: null,
+    themeId: null,
+    darkMode: null,
+    customTheme: null,
+    clockFontId: 'default',
+    textFontId: 'default',
+    shareLink: null
+  });
+  const { bgImage = null } = await chrome.storage.local.get({ bgImage: null });
+
+  // Determine theme from old keys
+  let themeId = syncData.themeId;
+  if (!themeId) {
+    if (syncData.darkMode !== null) {
+      themeId = syncData.darkMode ? 'dark' : 'light';
+    } else {
+      themeId = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
   }
-  return result.targetIsoLocal;
+
+  const countdown = {
+    id: generateId(),
+    label: '',
+    targetIsoLocal: syncData.targetIsoLocal || getTodayEOD(),
+    themeId,
+    customColors: syncData.customTheme || null,
+    clockFontId: normalizeFontId(syncData.clockFontId),
+    textFontId: normalizeFontId(syncData.textFontId),
+    isMain: true,
+    shareLink: syncData.shareLink || null
+  };
+
+  await saveCountdowns([countdown]);
+
+  if (bgImage) {
+    await saveBgImage(countdown.id, bgImage);
+    await chrome.storage.local.remove('bgImage');
+  }
+
+  // Clean up legacy keys
+  await chrome.storage.sync.remove([
+    'targetIsoLocal', 'themeId', 'darkMode', 'customTheme',
+    'clockFontId', 'textFontId', 'shareLink'
+  ]);
 }
 
-/**
- * Saves the target date to storage
- * @param {string} val - ISO local string to save
- */
-async function setTargetIsoLocal(val) {
-  await chrome.storage.sync.set({ targetIsoLocal: val });
-}
+// =============================================================================
+// Global storage helpers (not per-countdown)
+// =============================================================================
 
-/**
- * Gets sound enabled preference from storage
- * @returns {Promise<boolean>} Whether sound is enabled
- */
 async function getSoundEnabled() {
   const { soundEnabled = true } = await chrome.storage.sync.get({ soundEnabled: true });
   return soundEnabled;
 }
 
-/**
- * Saves sound enabled preference to storage
- * @param {boolean} val - Sound enabled state
- */
 async function setSoundEnabled(val) {
   await chrome.storage.sync.set({ soundEnabled: val });
 }
@@ -347,24 +430,6 @@ function resolveFontId(id, allowPremium) {
   return normalized;
 }
 
-async function getClockFontId() {
-  const { clockFontId = "default" } = await chrome.storage.sync.get({ clockFontId: "default" });
-  return normalizeFontId(clockFontId);
-}
-
-async function getTextFontId() {
-  const { textFontId = "default" } = await chrome.storage.sync.get({ textFontId: "default" });
-  return normalizeFontId(textFontId);
-}
-
-async function setClockFontId(clockFontId) {
-  await chrome.storage.sync.set({ clockFontId: normalizeFontId(clockFontId) });
-}
-
-async function setTextFontId(textFontId) {
-  await chrome.storage.sync.set({ textFontId: normalizeFontId(textFontId) });
-}
-
 function applyFontPreferences(clockFontId, textFontId, allowPremium) {
   const appliedClockId = resolveFontId(clockFontId, allowPremium);
   const appliedTextId = resolveFontId(textFontId, allowPremium);
@@ -378,68 +443,13 @@ function applyFontPreferences(clockFontId, textFontId, allowPremium) {
   return { appliedClockId, appliedTextId };
 }
 
-/**
- * Gets which target the sound was played for (prevents repeat plays)
- * @returns {Promise<string|null>} ISO string of target that sound was played for
- */
 async function getSoundPlayedFor() {
   const { soundPlayedFor = null } = await chrome.storage.sync.get({ soundPlayedFor: null });
   return soundPlayedFor;
 }
 
-/**
- * Records that sound was played for a specific target
- * @param {string} targetIso - ISO string of target
- */
 async function setSoundPlayedFor(targetIso) {
   await chrome.storage.sync.set({ soundPlayedFor: targetIso });
-}
-
-/**
- * Gets current theme ID from storage
- * Falls back to system preference if not set
- * @returns {Promise<string>} Theme ID
- */
-async function getThemeId() {
-  const { themeId = null } = await chrome.storage.sync.get({ themeId: null });
-
-  // Migration from old darkMode setting
-  if (themeId === null) {
-    const { darkMode = null } = await chrome.storage.sync.get({ darkMode: null });
-    if (darkMode !== null) {
-      const migratedTheme = darkMode ? 'dark' : 'light';
-      await setThemeId(migratedTheme);
-      return migratedTheme;
-    }
-    // Use system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return themeId;
-}
-
-/**
- * Saves theme ID to storage
- * @param {string} themeId - Theme ID
- */
-async function setThemeId(themeId) {
-  await chrome.storage.sync.set({ themeId });
-}
-
-/**
- * Gets custom theme colors from storage
- * @returns {Promise<object|null>} Custom theme colors or null
- */
-async function getCustomTheme() {
-  const { customTheme = null } = await chrome.storage.sync.get({ customTheme: null });
-  return customTheme;
-}
-
-/**
- * Saves custom theme colors to storage
- * @param {object} colors - Custom theme colors
- */
-async function setCustomTheme(colors) {
-  await chrome.storage.sync.set({ customTheme: colors });
 }
 
 /**
@@ -502,27 +512,6 @@ function isColorDark(hex) {
 }
 
 /**
- * Gets background image from local storage
- * @returns {Promise<string|null>} Base64 image data or null
- */
-async function getBackgroundImage() {
-  const { bgImage = null } = await chrome.storage.local.get({ bgImage: null });
-  return bgImage;
-}
-
-/**
- * Saves background image to local storage
- * @param {string|null} imageData - Base64 image data or null to remove
- */
-async function setBackgroundImage(imageData) {
-  if (imageData) {
-    await chrome.storage.local.set({ bgImage: imageData });
-  } else {
-    await chrome.storage.local.remove('bgImage');
-  }
-}
-
-/**
  * Applies background image to body
  * @param {string|null} imageData - Base64 image data or null
  */
@@ -534,24 +523,6 @@ function applyBackgroundImage(imageData) {
     document.body.style.backgroundImage = '';
     document.body.classList.remove('has-bg-image');
   }
-}
-
-/**
- * Gets cached share link from storage
- * @returns {Promise<{url: string, targetIso: string}|null>} Cached link data
- */
-async function getCachedShareLink() {
-  const { shareLink = null } = await chrome.storage.sync.get({ shareLink: null });
-  return shareLink;
-}
-
-/**
- * Caches a share link for a specific target
- * @param {string} url - Share URL
- * @param {string} targetIso - ISO string of target this link is for
- */
-async function setCachedShareLink(url, targetIso) {
-  await chrome.storage.sync.set({ shareLink: { url, targetIso } });
 }
 
 // =============================================================================
@@ -666,11 +637,34 @@ function closeSettingsModal() {
 // =============================================================================
 
 async function init() {
-  // Load saved settings
-  let isoLocal = await getTargetIsoLocal();
+  // Migrate legacy flat-key storage to countdowns array if needed
+  await migrateStorageIfNeeded();
+
+  // Load countdowns array
+  let countdowns = await getCountdowns() || [];
+  if (countdowns.length === 0) {
+    countdowns = [createDefaultCountdown('', getTodayEOD(), true)];
+    await saveCountdowns(countdowns);
+  }
+  let mainCountdown = getMainCountdown(countdowns);
+
+  // Derive per-countdown settings from main
+  let isoLocal = mainCountdown.targetIsoLocal;
   let targetDate = isoLocalToDate(isoLocal);
+  let themeId = mainCountdown.themeId;
+  let clockFontId = mainCountdown.clockFontId || 'default';
+  let textFontId = mainCountdown.textFontId || 'default';
+  let customTheme = mainCountdown.customColors;
+
+  // Load global settings
   let soundEnabled = await getSoundEnabled();
   let soundPlayedFor = await getSoundPlayedFor();
+  let premium = await isPremium();
+
+  // Load background images
+  let bgImages = await getBgImages();
+  let bgImage = bgImages[mainCountdown.id] || null;
+
   let pomodoroState = null;
   let pomodoroSettings = { ...DEFAULT_POMODORO_SETTINGS };
   let lastPomodoroTransitionAt = 0;
@@ -679,12 +673,6 @@ async function init() {
   let isPomodoroSetupOpen = false;
   let pomodoroToastHideTimer = null;
   let pomodoroToastCleanupTimer = null;
-  let themeId = await getThemeId();
-  let clockFontId = await getClockFontId();
-  let textFontId = await getTextFontId();
-  let customTheme = await getCustomTheme();
-  let premium = await isPremium();
-  let bgImage = await getBackgroundImage();
   let hasPlayedSettingsAttention = false;
   let settingsAttentionTimer = null;
 
@@ -891,17 +879,36 @@ async function init() {
   tick();
   setInterval(tick, 250);
 
-  // Keep UI in sync when background worker updates Pomodoro state.
+  // Keep UI in sync when background worker updates Pomodoro state or countdowns change.
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local") return;
-    if (changes.pomodoroSettings?.newValue) {
-      applyPomodoroSettings(changes.pomodoroSettings.newValue);
-      if (isPomodoroSetupOpen) {
-        populatePomodoroSetupInputs();
+    if (areaName === "local") {
+      if (changes.pomodoroSettings?.newValue) {
+        applyPomodoroSettings(changes.pomodoroSettings.newValue);
+        if (isPomodoroSetupOpen) populatePomodoroSetupInputs();
+      }
+      if (changes.pomodoroState?.newValue) {
+        applyPomodoroState(changes.pomodoroState.newValue, true);
       }
     }
-    if (changes.pomodoroState?.newValue) {
-      applyPomodoroState(changes.pomodoroState.newValue, true);
+    if (areaName === "sync" && changes.countdowns?.newValue) {
+      const updated = changes.countdowns.newValue;
+      if (!updated) return;
+      countdowns = updated;
+      const newMain = getMainCountdown(countdowns);
+      if (newMain.id !== mainCountdown.id || newMain.targetIsoLocal !== mainCountdown.targetIsoLocal) {
+        mainCountdown = newMain;
+        isoLocal = mainCountdown.targetIsoLocal;
+        targetDate = isoLocalToDate(isoLocal);
+        themeId = mainCountdown.themeId;
+        clockFontId = mainCountdown.clockFontId || 'default';
+        textFontId = mainCountdown.textFontId || 'default';
+        customTheme = mainCountdown.customColors;
+        applyTheme(themeId, customTheme);
+        applyFontPreferences(clockFontId, textFontId, premium);
+        targetText.textContent = `Target: ${formatLocal(targetDate)}`;
+      }
+      renderCardGrid();
+      updateLayoutMode();
     }
   });
 
@@ -1036,7 +1043,8 @@ async function init() {
     const val = dtInput.value?.trim();
     if (val && val !== isoLocal) {
       isoLocal = val;
-      await setTargetIsoLocal(isoLocal);
+      mainCountdown.targetIsoLocal = isoLocal;
+      await saveCountdowns(countdowns);
       targetDate = isoLocalToDate(isoLocal);
       targetText.textContent = `Target: ${formatLocal(targetDate)}`;
       const daysUntil = Math.ceil((targetDate - new Date()) / 86400000);
@@ -1071,7 +1079,7 @@ async function init() {
 
   function populateFontOptions() {
     const presets = Object.values(FONT_PRESETS);
-    [clockFontSelect, textFontSelect].forEach((select) => {
+    [clockFontSelect, textFontSelect, $("editClockFontSelect"), $("editTextFontSelect")].forEach((select) => {
       if (!select) return;
       select.innerHTML = "";
       presets.forEach((preset) => {
@@ -1127,8 +1135,8 @@ async function init() {
       }, 5800);
     }
 
-    // Update theme preset buttons
-    document.querySelectorAll(".theme-preset").forEach(btn => {
+    // Update theme preset buttons (main settings panel only)
+    document.querySelectorAll(".theme-preset:not(.edit-theme-preset)").forEach(btn => {
       const presetId = btn.dataset.theme;
       const preset = THEME_PRESETS[presetId];
       const isLocked = preset?.premium && !premium;
@@ -1214,7 +1222,8 @@ async function init() {
     }
 
     clockFontId = normalizeFontId(clockFontSelect.value);
-    await setClockFontId(clockFontId);
+    mainCountdown.clockFontId = clockFontId;
+    await saveCountdowns(countdowns);
     syncFontUI();
     track(ANALYTICS_EVENTS.CLOCK_FONT_CHANGED, { font_id: clockFontId });
   });
@@ -1227,26 +1236,24 @@ async function init() {
     }
 
     textFontId = normalizeFontId(textFontSelect.value);
-    await setTextFontId(textFontId);
+    mainCountdown.textFontId = textFontId;
+    await saveCountdowns(countdowns);
     syncFontUI();
     track(ANALYTICS_EVENTS.TEXT_FONT_CHANGED, { font_id: textFontId });
   });
 
-  // Theme preset clicks
-  document.querySelectorAll(".theme-preset").forEach(btn => {
+  // Theme preset clicks (main settings panel only)
+  document.querySelectorAll(".theme-preset:not(.edit-theme-preset)").forEach(btn => {
     btn.addEventListener("click", async () => {
       const presetId = btn.dataset.theme;
       const preset = THEME_PRESETS[presetId];
 
-      // Check if premium theme and user is not premium
       if (preset?.premium && !premium) {
-        // Open license modal
         licenseModal.classList.remove("hidden");
         licenseInput.focus();
         return;
       }
 
-      // If selecting custom and no custom theme exists, create default
       if (presetId === 'custom' && !customTheme) {
         customTheme = {
           bg: '#1a1a1a',
@@ -1255,11 +1262,12 @@ async function init() {
           border: '#333333',
           inputBg: '#2a2a2a'
         };
-        await setCustomTheme(customTheme);
+        mainCountdown.customColors = customTheme;
       }
 
       themeId = presetId;
-      await setThemeId(themeId);
+      mainCountdown.themeId = themeId;
+      await saveCountdowns(countdowns);
       applyTheme(themeId, customTheme);
       updatePremiumUI();
       track(ANALYTICS_EVENTS.THEME_CHANGED, { theme_id: themeId });
@@ -1273,9 +1281,10 @@ async function init() {
       text: colorText.value,
       muted: colorMuted.value,
       border: colorBorder.value,
-      inputBg: colorBg.value  // Use bg as inputBg base
+      inputBg: colorBg.value
     };
-    await setCustomTheme(customTheme);
+    mainCountdown.customColors = customTheme;
+    await saveCountdowns(countdowns);
     applyTheme('custom', customTheme);
     updateCustomPreview();
   }
@@ -1300,6 +1309,8 @@ async function init() {
   const cropApplyBtn = $("cropApplyBtn");
   const cropCancelBtn = $("cropCancelBtn");
   let cropper = null;
+  // Tracks which countdown id the crop is being applied to (null = main)
+  let cropTargetId = null;
 
   // Update background image UI based on premium status
   function updateBgImageUI() {
@@ -1324,6 +1335,35 @@ async function init() {
       cropper = null;
     }
     cropImage.src = "";
+    cropTargetId = null;
+  }
+
+  function openCropForFile(file, targetId) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      cropTargetId = targetId;
+      cropImage.src = event.target.result;
+      cropModal.classList.remove("hidden");
+      cropImage.onload = () => {
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropImage, {
+          aspectRatio: NaN,
+          viewMode: 2,
+          dragMode: 'crop',
+          autoCropArea: 1,
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: false,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+          minContainerWidth: 200,
+          minContainerHeight: 200
+        });
+      };
+    };
+    reader.readAsDataURL(file);
   }
 
   // Handle background image upload - show crop modal
@@ -1338,42 +1378,13 @@ async function init() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert("Image must be under 5MB");
       bgImageInput.value = "";
       return;
     }
 
-    // Load image and show crop modal
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      cropImage.src = event.target.result;
-      cropModal.classList.remove("hidden");
-
-      // Initialize Cropper.js after image loads
-      cropImage.onload = () => {
-        if (cropper) {
-          cropper.destroy();
-        }
-        cropper = new Cropper(cropImage, {
-          aspectRatio: NaN, // Free aspect ratio
-          viewMode: 2, // Restrict image to fit within container, show full image
-          dragMode: 'crop',
-          autoCropArea: 1, // Select entire image by default
-          restore: false,
-          guides: true,
-          center: true,
-          highlight: false,
-          cropBoxMovable: true,
-          cropBoxResizable: true,
-          toggleDragModeOnDblclick: false,
-          minContainerWidth: 200,
-          minContainerHeight: 200
-        });
-      };
-    };
-    reader.readAsDataURL(file);
+    openCropForFile(file, mainCountdown.id);
     bgImageInput.value = "";
   });
 
@@ -1381,15 +1392,12 @@ async function init() {
   cropApplyBtn?.addEventListener("click", async () => {
     if (!cropper) return;
 
-    // Get the cropped canvas at full resolution first
     const croppedCanvas = cropper.getCroppedCanvas();
-
     if (!croppedCanvas) {
       closeCropModal();
       return;
     }
 
-    // Scale down if too large (max 1920px on longest side)
     const maxDimension = 1920;
     let finalCanvas = croppedCanvas;
 
@@ -1407,13 +1415,21 @@ async function init() {
       ctx.drawImage(croppedCanvas, 0, 0, newWidth, newHeight);
     }
 
-    // Convert to JPEG at 85% quality
-    bgImage = finalCanvas.toDataURL("image/jpeg", 0.85);
-    await setBackgroundImage(bgImage);
-    applyBackgroundImage(bgImage);
-    updateBgImageUI();
-    track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_SET);
+    const imageData = finalCanvas.toDataURL("image/jpeg", 0.85);
+    const targetId = cropTargetId || mainCountdown.id;
+    await saveBgImage(targetId, imageData);
+    bgImages = await getBgImages();
 
+    if (targetId === mainCountdown.id) {
+      bgImage = imageData;
+      applyBackgroundImage(bgImage);
+      updateBgImageUI();
+    } else {
+      // Update edit modal remove button for secondary countdown
+      $("editBgImageRemove")?.classList.remove("hidden");
+    }
+
+    track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_SET);
     closeCropModal();
   });
 
@@ -1428,7 +1444,8 @@ async function init() {
   // Handle background image removal
   bgImageRemove?.addEventListener("click", async () => {
     bgImage = null;
-    await setBackgroundImage(null);
+    await removeBgImage(mainCountdown.id);
+    bgImages = await getBgImages();
     applyBackgroundImage(null);
     updateBgImageUI();
     track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_REMOVED);
@@ -1494,64 +1511,51 @@ async function init() {
     shareStatus.textContent = "";
 
     try {
-      // Check if we have a cached link for this target date
-      const cached = await getCachedShareLink();
+      const cached = mainCountdown.shareLink;
       let shareUrl;
 
       if (cached && cached.targetIso === isoLocal) {
-        // Reuse cached link (same target date)
         shareUrl = cached.url;
         track(ANALYTICS_EVENTS.SHARE_LINK_COPIED);
       } else {
-        // Create new share link via Cloudflare Worker
         const res = await fetch(`${WORKER_URL}/api/create`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             target: targetDate.toISOString(),
-            title: "Every Second Counts"
+            title: mainCountdown.label || "Every Second Counts"
           })
         });
 
         const data = await res.json();
 
-        // Handle rate limit
         if (res.status === 429) {
           const mins = data.retryAfterMinutes || 60;
           shareStatus.textContent = `Limit reached. Try in ${mins} min`;
-          setTimeout(() => {
-            shareStatus.textContent = "";
-          }, 3000);
+          setTimeout(() => { shareStatus.textContent = ""; }, 3000);
           shareBtn.disabled = false;
           return;
         }
 
         if (data.url) {
           shareUrl = data.url;
-          // Cache the link for future clicks
-          await setCachedShareLink(shareUrl, isoLocal);
+          mainCountdown.shareLink = { url: shareUrl, targetIso: isoLocal };
+          await saveCountdowns(countdowns);
           track(ANALYTICS_EVENTS.SHARE_LINK_CREATED);
         }
       }
 
-      // Copy to clipboard and show confirmation
       if (shareUrl) {
         await navigator.clipboard.writeText(shareUrl);
         shareStatus.textContent = "Copied!";
-        setTimeout(() => {
-          shareStatus.textContent = "";
-        }, 1500);
+        setTimeout(() => { shareStatus.textContent = ""; }, 1500);
       } else {
         shareStatus.textContent = "Failed";
-        setTimeout(() => {
-          shareStatus.textContent = "";
-        }, 2000);
+        setTimeout(() => { shareStatus.textContent = ""; }, 2000);
       }
     } catch (e) {
       shareStatus.textContent = "Error";
-      setTimeout(() => {
-        shareStatus.textContent = "";
-      }, 2000);
+      setTimeout(() => { shareStatus.textContent = ""; }, 2000);
     }
 
     shareBtn.disabled = false;
@@ -1579,8 +1583,379 @@ async function init() {
       if (cropModal && !cropModal.classList.contains("hidden")) {
         closeCropModal();
       }
+      const addModal = $("addCountdownModal");
+      if (addModal && !addModal.classList.contains("hidden")) {
+        addModal.classList.add("hidden");
+      }
+      if (editingCountdownId) closeEditCountdownModal();
     }
   });
+
+  // ===========================================================================
+  // Multi-Countdown: Layout, Cards, and Actions
+  // ===========================================================================
+
+  function updateLayoutMode() {
+    const isMulti = countdowns.length > 1;
+    const mainLabel = $("mainCountdownLabel");
+    if (mainLabel) {
+      mainLabel.classList.toggle("hidden", !isMulti);
+      if (isMulti) mainLabel.textContent = mainCountdown.label || "Main countdown";
+    }
+  }
+
+  function formatCardTime(targetIsoLocal) {
+    const dt = isoLocalToDate(targetIsoLocal);
+    const diffMs = dt - Date.now();
+    const totalSeconds = Math.floor(Math.abs(diffMs) / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const formatted = `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+    return diffMs <= 0 ? `+${formatted}` : formatted;
+  }
+
+  function buildCountdownCard(c) {
+    const card = document.createElement("div");
+    card.className = "countdown-card";
+    card.dataset.id = c.id;
+
+    const dt = isoLocalToDate(c.targetIsoLocal);
+    const label = c.label || "Countdown";
+
+    card.innerHTML = `
+      <div class="countdown-card-label">${label}</div>
+      <div class="countdown-card-time">${formatCardTime(c.targetIsoLocal)}</div>
+      <div class="countdown-card-target">${formatLocal(dt)}</div>
+      <div class="countdown-card-actions">
+        <button class="card-action-btn card-set-main-btn" data-id="${c.id}" aria-label="Set as main">Set as main</button>
+        <button class="card-action-btn card-edit-btn" data-id="${c.id}" aria-label="Edit">Edit</button>
+        <button class="card-action-btn card-share-btn" data-id="${c.id}" aria-label="Share">Share</button>
+        <button class="card-action-btn danger card-delete-btn" data-id="${c.id}" aria-label="Delete">Delete</button>
+      </div>
+    `;
+    return card;
+  }
+
+  function renderCardGrid() {
+    const cardsZone = $("cardsZone");
+    if (!cardsZone) return;
+    cardsZone.innerHTML = "";
+    countdowns.filter(c => !c.isMain).forEach(c => {
+      cardsZone.appendChild(buildCountdownCard(c));
+    });
+  }
+
+  // Card ticker — updates time displays on secondary cards
+  setInterval(() => {
+    countdowns.forEach(c => {
+      if (c.isMain) return;
+      const el = document.querySelector(`.countdown-card[data-id="${c.id}"] .countdown-card-time`);
+      if (el) el.textContent = formatCardTime(c.targetIsoLocal);
+    });
+  }, 250);
+
+  // Delegate card action clicks
+  $("cardsZone")?.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".card-action-btn");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+
+    if (btn.classList.contains("card-set-main-btn")) {
+      await handleSetAsMain(id);
+    } else if (btn.classList.contains("card-edit-btn")) {
+      openEditCountdownModal(id);
+    } else if (btn.classList.contains("card-share-btn")) {
+      await handleShareCard(btn, id);
+    } else if (btn.classList.contains("card-delete-btn")) {
+      await handleDeleteCountdown(id);
+    }
+  });
+
+  async function handleSetAsMain(id) {
+    setMainCountdown(countdowns, id);
+    mainCountdown = getMainCountdown(countdowns);
+    isoLocal = mainCountdown.targetIsoLocal;
+    targetDate = isoLocalToDate(isoLocal);
+    themeId = mainCountdown.themeId;
+    clockFontId = mainCountdown.clockFontId || 'default';
+    textFontId = mainCountdown.textFontId || 'default';
+    customTheme = mainCountdown.customColors;
+    bgImages = await getBgImages();
+    bgImage = bgImages[mainCountdown.id] || null;
+
+    applyTheme(themeId, customTheme);
+    applyFontPreferences(clockFontId, textFontId, premium);
+    applyBackgroundImage(bgImage);
+    targetText.textContent = `Target: ${formatLocal(targetDate)}`;
+    await saveCountdowns(countdowns);
+    updateLayoutMode();
+    renderCardGrid();
+    track(ANALYTICS_EVENTS.COUNTDOWN_SET_MAIN);
+  }
+
+  async function handleDeleteCountdown(id) {
+    if (!confirm("Delete this countdown?")) return;
+    countdowns = countdowns.filter(c => c.id !== id);
+    await saveCountdowns(countdowns);
+    await removeBgImage(id);
+    bgImages = await getBgImages();
+    updateLayoutMode();
+    renderCardGrid();
+    track(ANALYTICS_EVENTS.COUNTDOWN_DELETED);
+  }
+
+  async function handleShareCard(btn, id) {
+    const countdown = countdowns.find(c => c.id === id);
+    if (!countdown) return;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+
+    try {
+      const cached = countdown.shareLink;
+      let shareUrl;
+      const dt = isoLocalToDate(countdown.targetIsoLocal);
+
+      if (cached && cached.targetIso === countdown.targetIsoLocal) {
+        shareUrl = cached.url;
+        track(ANALYTICS_EVENTS.SHARE_LINK_COPIED);
+      } else {
+        const res = await fetch(`${WORKER_URL}/api/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target: dt.toISOString(),
+            title: countdown.label || "Every Second Counts"
+          })
+        });
+        const data = await res.json();
+
+        if (res.status === 429) {
+          btn.textContent = "Rate limit";
+          setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 3000);
+          return;
+        }
+
+        if (data.url) {
+          shareUrl = data.url;
+          countdown.shareLink = { url: shareUrl, targetIso: countdown.targetIsoLocal };
+          await saveCountdowns(countdowns);
+          track(ANALYTICS_EVENTS.COUNTDOWN_CARD_SHARED);
+        }
+      }
+
+      if (shareUrl) {
+        await navigator.clipboard.writeText(shareUrl);
+        btn.textContent = "Copied!";
+        setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
+        return;
+      }
+    } catch (e) {
+      btn.textContent = "Error";
+      setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+      return;
+    }
+
+    btn.disabled = false;
+  }
+
+  // ===========================================================================
+  // Add Countdown Modal
+  // ===========================================================================
+
+  function canAddCountdown() {
+    return premium || countdowns.length < 5;
+  }
+
+  function openAddCountdownModal() {
+    if (!canAddCountdown()) {
+      licenseModal.classList.remove("hidden");
+      licenseInput.focus();
+      return;
+    }
+    const addDateInput = $("addDateInput");
+    if (addDateInput) addDateInput.value = getTodayEOD();
+    const addLabelInput = $("addLabelInput");
+    if (addLabelInput) addLabelInput.value = "";
+    $("addCountdownError")?.classList.add("hidden");
+    $("addCountdownModal")?.classList.remove("hidden");
+  }
+
+  $("addCountdownFloatBtn")?.addEventListener("click", openAddCountdownModal);
+  $("addCountdownBtn")?.addEventListener("click", openAddCountdownModal);
+
+  $("addCountdownCancelBtn")?.addEventListener("click", () => {
+    $("addCountdownModal")?.classList.add("hidden");
+  });
+
+  $("addCountdownSaveBtn")?.addEventListener("click", async () => {
+    const label = $("addLabelInput")?.value.trim() || "";
+    const dateVal = $("addDateInput")?.value?.trim();
+    const errEl = $("addCountdownError");
+
+    if (!dateVal) {
+      if (errEl) { errEl.textContent = "Please select a target date"; errEl.classList.remove("hidden"); }
+      return;
+    }
+
+    if (!canAddCountdown()) {
+      licenseModal.classList.remove("hidden");
+      licenseInput.focus();
+      return;
+    }
+
+    const newCountdown = createDefaultCountdown(label, dateVal, false);
+    countdowns.push(newCountdown);
+    await saveCountdowns(countdowns);
+    $("addCountdownModal")?.classList.add("hidden");
+    updateLayoutMode();
+    renderCardGrid();
+    track(ANALYTICS_EVENTS.COUNTDOWN_ADDED);
+  });
+
+  // ===========================================================================
+  // Edit Countdown Modal
+  // ===========================================================================
+
+  let editingCountdownId = null;
+
+  function populateEditModal(c) {
+    $("editCountdownId").value = c.id;
+    $("editLabelInput").value = c.label || "";
+    $("editDateInput").value = c.targetIsoLocal;
+
+    // Theme presets
+    document.querySelectorAll(".edit-theme-preset").forEach(btn => {
+      const presetId = btn.dataset.theme;
+      const preset = THEME_PRESETS[presetId];
+      const isLocked = preset?.premium && !premium;
+      btn.classList.toggle("locked", isLocked);
+      btn.classList.toggle("active", presetId === c.themeId);
+      const lockIcon = btn.querySelector(".edit-theme-lock");
+      if (lockIcon) lockIcon.style.display = isLocked ? "inline" : "none";
+    });
+
+    // Fonts
+    const editFontSection = $("editFontSection");
+    const editFontLock = $("editFontLock");
+    const editClockFontSelect = $("editClockFontSelect");
+    const editTextFontSelect = $("editTextFontSelect");
+    if (editFontSection) editFontSection.classList.toggle("locked", !premium);
+    if (editFontLock) editFontLock.style.display = premium ? "none" : "inline";
+    if (editClockFontSelect) {
+      editClockFontSelect.disabled = !premium;
+      editClockFontSelect.value = resolveFontId(c.clockFontId || "default", premium);
+    }
+    if (editTextFontSelect) {
+      editTextFontSelect.disabled = !premium;
+      editTextFontSelect.value = resolveFontId(c.textFontId || "default", premium);
+    }
+
+    // Bg image UI
+    const hasBg = !!(bgImages[c.id]);
+    const editBgImageLabel = $("editBgImageLabel");
+    const editBgImageLock = $("editBgImageLock");
+    $("editBgImageRemove")?.classList.toggle("hidden", !hasBg);
+    if (editBgImageLabel) editBgImageLabel.classList.toggle("locked", !premium);
+    if (editBgImageLock) editBgImageLock.style.display = premium ? "none" : "inline";
+  }
+
+  function openEditCountdownModal(id) {
+    const c = countdowns.find(cd => cd.id === id);
+    if (!c) return;
+    editingCountdownId = id;
+    $("editCountdownError")?.classList.add("hidden");
+    populateEditModal(c);
+    $("editCountdownModal")?.classList.remove("hidden");
+  }
+
+  function closeEditCountdownModal() {
+    $("editCountdownModal")?.classList.add("hidden");
+    editingCountdownId = null;
+  }
+
+  $("editCountdownCancelBtn")?.addEventListener("click", closeEditCountdownModal);
+
+  // Edit modal theme preset clicks
+  document.querySelectorAll(".edit-theme-preset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (!editingCountdownId) return;
+      const presetId = btn.dataset.theme;
+      const preset = THEME_PRESETS[presetId];
+      if (preset?.premium && !premium) {
+        closeEditCountdownModal();
+        licenseModal.classList.remove("hidden");
+        licenseInput.focus();
+        return;
+      }
+      const c = countdowns.find(cd => cd.id === editingCountdownId);
+      if (c) c.themeId = presetId;
+      document.querySelectorAll(".edit-theme-preset").forEach(b => {
+        b.classList.toggle("active", b.dataset.theme === presetId);
+      });
+    });
+  });
+
+  // Edit bg image upload
+  $("editBgImageInput")?.addEventListener("change", async (e) => {
+    if (!premium) {
+      licenseModal.classList.remove("hidden");
+      licenseInput.focus();
+      $("editBgImageInput").value = "";
+      return;
+    }
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be under 5MB");
+      $("editBgImageInput").value = "";
+      return;
+    }
+    openCropForFile(file, editingCountdownId);
+    $("editBgImageInput").value = "";
+  });
+
+  // Edit bg image remove
+  $("editBgImageRemove")?.addEventListener("click", async () => {
+    if (!editingCountdownId) return;
+    await removeBgImage(editingCountdownId);
+    bgImages = await getBgImages();
+    $("editBgImageRemove")?.classList.add("hidden");
+    track(ANALYTICS_EVENTS.BACKGROUND_IMAGE_REMOVED);
+  });
+
+  // Save edit
+  $("editCountdownSaveBtn")?.addEventListener("click", async () => {
+    if (!editingCountdownId) return;
+    const c = countdowns.find(cd => cd.id === editingCountdownId);
+    if (!c) return;
+
+    const dateVal = $("editDateInput")?.value?.trim();
+    const errEl = $("editCountdownError");
+    if (!dateVal) {
+      if (errEl) { errEl.textContent = "Please select a target date"; errEl.classList.remove("hidden"); }
+      return;
+    }
+
+    c.label = $("editLabelInput")?.value.trim() || "";
+    c.targetIsoLocal = dateVal;
+    if (premium) {
+      c.clockFontId = normalizeFontId($("editClockFontSelect")?.value || "default");
+      c.textFontId = normalizeFontId($("editTextFontSelect")?.value || "default");
+    }
+
+    await saveCountdowns(countdowns);
+    renderCardGrid();
+    closeEditCountdownModal();
+  });
+
+  // ===========================================================================
+  // Initialize multi-countdown layout
+  // ===========================================================================
+
+  updateLayoutMode();
+  renderCardGrid();
 }
 
 // Start the app
