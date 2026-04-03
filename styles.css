@@ -39,7 +39,7 @@ body {
 }
 
 .settings-btn {
-  position: absolute;
+  position: fixed;
   bottom: 20px;
   right: 20px;
   display: inline-flex;
@@ -1164,7 +1164,7 @@ body {
 }
 
 .focus-world-habitat {
-  position: absolute;
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
@@ -2316,7 +2316,7 @@ body.has-bg-image .card {
 
 /* Floating add countdown button — above the settings button, bottom-right */
 .add-countdown-float-btn {
-  position: absolute;
+  position: fixed;
   bottom: 72px;
   right: 20px;
   display: inline-flex;
