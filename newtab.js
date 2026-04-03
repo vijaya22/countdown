@@ -68,6 +68,7 @@ const settingsModal = $("settingsModal");
 const settingsBtn = $("settingsBtn");
 const settingsProBadge = $("settingsProBadge");
 const soundToggle = $("soundToggle");
+const companionToggle = $("companionToggle");
 const fontSection = $("fontSection");
 const fontLock = $("fontLock");
 const clockFontSelect = $("clockFontSelect");
@@ -211,6 +212,10 @@ function emitFocusWorldState(worldState) {
 
 function emitFocusWorldTheme() {
   window.dispatchEvent(new CustomEvent("focusworld:theme"));
+}
+
+function emitFocusWorldEnabled(enabled) {
+  window.dispatchEvent(new CustomEvent("focusworld:enabled", { detail: { enabled: Boolean(enabled) } }));
 }
 
 function normalizeWorldState(worldState) {
@@ -549,6 +554,15 @@ async function setSoundEnabled(val) {
   await chrome.storage.sync.set({ soundEnabled: val });
 }
 
+async function getCompanionEnabled() {
+  const { companionEnabled = true } = await chrome.storage.sync.get({ companionEnabled: true });
+  return companionEnabled;
+}
+
+async function setCompanionEnabled(val) {
+  await chrome.storage.sync.set({ companionEnabled: Boolean(val) });
+}
+
 function normalizeFontId(id) {
   return FONT_PRESETS[id] ? id : "default";
 }
@@ -818,6 +832,7 @@ async function init() {
 
   // Load global settings
   let soundEnabled = await getSoundEnabled();
+  let companionEnabled = await getCompanionEnabled();
   let soundPlayedFor = await getSoundPlayedFor();
   let premium = await isPremium();
 
@@ -842,6 +857,7 @@ async function init() {
   applyTheme(themeId, customTheme);
   applyFontPreferences(clockFontId, textFontId, premium);
   renderFocusWorld(focusWorldState);
+  emitFocusWorldEnabled(companionEnabled);
 
   // Apply background image if set
   if (bgImage) {
@@ -1048,6 +1064,7 @@ async function init() {
 
   window.addEventListener("focusworld:ready", () => {
     renderFocusWorld(focusWorldState);
+    emitFocusWorldEnabled(companionEnabled);
     emitFocusWorldTheme();
   });
 
@@ -1123,6 +1140,13 @@ async function init() {
       }
       renderCardGrid();
       updateLayoutMode();
+    }
+    if (areaName === "sync" && changes.companionEnabled) {
+      companionEnabled = changes.companionEnabled.newValue !== false;
+      if (companionToggle) {
+        companionToggle.checked = companionEnabled;
+      }
+      emitFocusWorldEnabled(companionEnabled);
     }
   });
 
@@ -1447,6 +1471,9 @@ async function init() {
   settingsBtn.addEventListener("click", async () => {
     track(ANALYTICS_EVENTS.SETTINGS_OPENED);
     soundToggle.checked = soundEnabled;
+    if (companionToggle) {
+      companionToggle.checked = companionEnabled;
+    }
     // Refresh premium status from storage
     premium = await isPremium();
     updatePremiumUI();
@@ -1462,6 +1489,12 @@ async function init() {
     soundEnabled = soundToggle.checked;
     await setSoundEnabled(soundEnabled);
     track(ANALYTICS_EVENTS.SOUND_TOGGLED, { enabled: soundEnabled });
+  });
+
+  companionToggle?.addEventListener("change", async () => {
+    companionEnabled = companionToggle.checked;
+    await setCompanionEnabled(companionEnabled);
+    emitFocusWorldEnabled(companionEnabled);
   });
 
   clockFontSelect?.addEventListener("change", async () => {

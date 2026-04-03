@@ -1107,9 +1107,7 @@ body {
 }
 
 .main-zone,
-.cards-zone,
-.pomo-drawer,
-.pomo-toast {
+.cards-zone {
   position: relative;
   z-index: 3;
 }
@@ -1171,7 +1169,7 @@ body {
   height: clamp(190px, 24vh, 260px);
   overflow: visible;
   pointer-events: none;
-  z-index: 1;
+  z-index: 10;
 }
 
 .companion-habitat-scene {

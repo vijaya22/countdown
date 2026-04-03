@@ -202,6 +202,17 @@ const habitat = {
   rafId: 0
 };
 
+let isCompanionEnabled = true;
+
+function setHabitatVisibility(enabled) {
+  const container = document.getElementById("focusWorldHabitat");
+  if (!container) return;
+  container.hidden = !enabled;
+  if (!enabled) {
+    container.replaceChildren();
+  }
+}
+
 function getDogBounds() {
   const sceneWidth = habitat.scene?.clientWidth || habitat.container?.clientWidth || 0;
   const dogWidth = habitat.dogButton?.offsetWidth || 132;
@@ -390,6 +401,10 @@ function stepDog(ts) {
 }
 
 function animationLoop(ts) {
+  if (!isCompanionEnabled) {
+    habitat.rafId = 0;
+    return;
+  }
   stepDog(ts);
   habitat.rafId = window.requestAnimationFrame(animationLoop);
 }
@@ -400,6 +415,7 @@ function startAnimationLoop() {
 }
 
 function attachScene(scene) {
+  if (!scene) return;
   habitat.scene = scene;
   habitat.container = scene.parentElement;
   habitat.dogButton = scene.querySelector(".companion-dog");
@@ -418,7 +434,12 @@ function attachScene(scene) {
 function render(state) {
   const container = document.getElementById("focusWorldHabitat");
   if (!container) return;
+  if (!isCompanionEnabled) {
+    setHabitatVisibility(false);
+    return;
+  }
   const normalized = normalizeWorldState(state);
+  setHabitatVisibility(true);
   container.innerHTML = buildHabitatMarkup(normalized);
   attachScene(container.querySelector(".companion-habitat-scene"));
 }
@@ -449,6 +470,21 @@ function syncArrivalAnnouncement(state) {
 }
 
 function boot() {
+  window.addEventListener("focusworld:enabled", (event) => {
+    isCompanionEnabled = event.detail?.enabled !== false;
+    if (!isCompanionEnabled) {
+      if (habitat.rafId) {
+        window.cancelAnimationFrame(habitat.rafId);
+        habitat.rafId = 0;
+      }
+      setHabitatVisibility(false);
+      return;
+    }
+
+    const state = window.__focusWorldState || DEFAULT_WORLD_STATE;
+    render(state);
+  });
+
   window.addEventListener("focusworld:update", (event) => {
     const nextState = syncArrivalAnnouncement(event.detail);
     window.__focusWorldState = nextState;
