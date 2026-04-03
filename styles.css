@@ -39,7 +39,7 @@ body {
 }
 
 .settings-btn {
-  position: absolute;
+  position: fixed;
   bottom: 20px;
   right: 20px;
   display: inline-flex;
@@ -168,6 +168,688 @@ body {
   display: grid;
   gap: 24px;
   place-items: center;
+}
+
+.main-zone-stack {
+  width: min(980px, calc(100vw - 32px));
+  display: grid;
+  gap: 22px;
+}
+
+.focus-world-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 28px;
+  padding: 20px;
+  background:
+    radial-gradient(circle at top center, rgba(255, 255, 255, 0.2), transparent 48%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--input-bg) 88%, transparent),
+      color-mix(in srgb, var(--card-bg) 96%, transparent)
+    );
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.focus-world-panel::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -44% auto;
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(103, 157, 114, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+.focus-world-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-world-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.focus-world-kicker {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.focus-world-title {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.focus-world-toggle {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--input-bg) 92%, transparent);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-family: var(--body-font);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.focus-world-toggle:hover {
+  transform: translateY(-1px);
+  border-color: var(--text);
+}
+
+.focus-world-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.focus-world-panel.collapsed .focus-world-toggle svg {
+  transform: rotate(180deg);
+}
+
+.focus-world-body {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+  max-height: 640px;
+  opacity: 1;
+  transition: max-height 0.25s ease, opacity 0.2s ease, margin-top 0.25s ease;
+}
+
+.focus-world-panel.collapsed .focus-world-body {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.focus-world-scene {
+  position: relative;
+  min-height: 270px;
+  border-radius: 22px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(199, 222, 236, 0.8), rgba(238, 244, 240, 0.4) 62%, rgba(224, 232, 224, 0.8)),
+    radial-gradient(circle at 50% 100%, rgba(111, 149, 116, 0.14), transparent 34%);
+}
+
+.garden-scene,
+.garden-scene-inner {
+  position: absolute;
+  inset: 0;
+}
+
+.garden-sky-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255, 248, 217, 0.72), transparent 20%),
+    linear-gradient(180deg, rgba(214, 232, 244, 0.9), rgba(237, 243, 237, 0.6) 58%, rgba(208, 223, 205, 0.88));
+}
+
+.garden-cloud {
+  position: absolute;
+  width: 110px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.54);
+  filter: blur(0.5px);
+}
+
+.garden-cloud::before,
+.garden-cloud::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: inherit;
+}
+
+.garden-cloud::before {
+  width: 46px;
+  height: 46px;
+  left: 18px;
+  top: -16px;
+}
+
+.garden-cloud::after {
+  width: 42px;
+  height: 42px;
+  right: 12px;
+  top: -10px;
+}
+
+.garden-cloud-left {
+  top: 30px;
+  left: 52px;
+}
+
+.garden-cloud-right {
+  top: 56px;
+  right: 64px;
+  transform: scale(0.88);
+}
+
+.garden-arrival-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 252, 244, 0.78);
+  color: #314538;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  animation: arrival-banner-in 4.2s ease both;
+  z-index: 2;
+}
+
+.garden-arrival-pill {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 196, 82, 0.22);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.garden-fence {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 104px;
+  height: 42px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(173, 146, 108, 0.95) 0 12px,
+      rgba(201, 174, 136, 0.95) 12px 16px
+    );
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.24) inset;
+}
+
+.garden-ground {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  bottom: -8px;
+  height: 138px;
+  border-radius: 50% 50% 0 0;
+  background: linear-gradient(180deg, #83af76, #678b61 62%, #5d7750);
+}
+
+.garden-flowerbed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 58px;
+  height: 54px;
+  background:
+    radial-gradient(circle at 10% 50%, #ffb59b 0 5px, transparent 6px),
+    radial-gradient(circle at 22% 38%, #f0d26d 0 5px, transparent 6px),
+    radial-gradient(circle at 34% 56%, #ef7f95 0 5px, transparent 6px),
+    radial-gradient(circle at 49% 42%, #f2c65d 0 5px, transparent 6px),
+    radial-gradient(circle at 63% 54%, #ed86a0 0 5px, transparent 6px),
+    radial-gradient(circle at 78% 38%, #f0d26d 0 5px, transparent 6px),
+    radial-gradient(circle at 91% 52%, #ffb59b 0 5px, transparent 6px),
+    linear-gradient(180deg, #8f613b, #6d4a2f);
+}
+
+.garden-path {
+  position: absolute;
+  left: calc(50% - 58px);
+  bottom: -6px;
+  width: 116px;
+  height: 86px;
+  border-radius: 50% 50% 0 0;
+  background: linear-gradient(180deg, rgba(232, 214, 183, 0.96), rgba(214, 191, 156, 0.98));
+}
+
+.garden-residents {
+  position: absolute;
+  inset: 0;
+}
+
+.garden-resident {
+  position: absolute;
+  width: 84px;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.resident-cat,
+.resident-bunny {
+  animation: resident-patrol calc(var(--motion-duration) * 1.15) ease-in-out infinite alternate;
+}
+
+.resident-dog {
+  width: 108px;
+  z-index: 4;
+  animation: dog-patrol var(--motion-duration) ease-in-out infinite alternate;
+  --dog-frame-width: 108px;
+  --dog-frame-height: 96px;
+  --dog-sheet-width: 648px;
+}
+
+.garden-resident-shell {
+  position: relative;
+  transform-origin: center bottom;
+}
+
+.garden-resident-motion {
+  transform-origin: center bottom;
+}
+
+.garden-resident-motion.motion-grounded {
+  animation: resident-roam var(--motion-duration) ease-in-out infinite alternate;
+}
+
+.resident-dog .garden-resident-motion.motion-grounded {
+  animation: dog-bob 0.7s ease-in-out infinite;
+}
+
+.garden-resident-motion.motion-flying {
+  animation: resident-fly var(--motion-duration) ease-in-out infinite alternate;
+}
+
+.garden-resident-motion.motion-planted {
+  animation: resident-sway var(--motion-duration) ease-in-out infinite;
+}
+
+.garden-resident svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.dog-sprite {
+  width: var(--dog-frame-width);
+  height: var(--dog-frame-height);
+  margin-left: -6px;
+  background-image: url("assets/dog-walk-sprite.png");
+  background-repeat: no-repeat;
+  background-size: var(--dog-sheet-width) var(--dog-frame-height);
+  background-position: 0 0;
+  animation:
+    dog-walk-frames 0.82s steps(6) infinite,
+    dog-facing var(--motion-duration) steps(1, end) infinite alternate;
+  transform-origin: center bottom;
+}
+
+.garden-resident-label {
+  display: block;
+  margin-top: -2px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(21, 38, 28, 0.72);
+}
+
+.garden-book-card {
+  width: min(520px, 92vw);
+}
+
+.garden-book-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.garden-book-summary {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.garden-book-next {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.garden-book-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.garden-book-entry {
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 16px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--input-bg) 92%, transparent);
+  display: grid;
+  gap: 6px;
+  opacity: 0.72;
+}
+
+.garden-book-entry.unlocked {
+  opacity: 1;
+  border-color: rgba(108, 158, 121, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(108, 158, 121, 0.12);
+}
+
+.garden-book-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(108, 158, 121, 0.14);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.garden-book-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.garden-book-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.garden-resident.resident-recent {
+  filter: drop-shadow(0 10px 18px rgba(255, 196, 82, 0.3));
+}
+
+.garden-resident.resident-recent .garden-resident-shell {
+  animation: resident-reward-in 0.85s cubic-bezier(0.2, 0.9, 0.2, 1.2);
+}
+
+.garden-resident-sparkles {
+  position: absolute;
+  inset: -10px;
+  pointer-events: none;
+}
+
+.garden-resident-sparkles::before,
+.garden-resident-sparkles::after {
+  content: "";
+  position: absolute;
+  width: 78px;
+  height: 78px;
+  left: 50%;
+  top: 50%;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 210, 113, 0.64);
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  animation: resident-sparkle 1.4s ease-out 2;
+}
+
+.garden-resident-sparkles::after {
+  width: 104px;
+  height: 104px;
+  animation-delay: 0.18s;
+}
+
+.resident-dog .garden-resident-motion,
+.resident-cat .garden-resident-motion,
+.resident-bunny .garden-resident-motion {
+  animation-name: resident-roam;
+}
+
+.resident-dog .garden-resident-motion {
+  animation-name: dog-bob;
+}
+
+.resident-bird .garden-resident-motion,
+.resident-bee .garden-resident-motion {
+  animation-name: resident-fly;
+}
+
+.resident-flower .garden-resident-motion,
+.resident-tulip .garden-resident-motion,
+.resident-mushroom .garden-resident-motion {
+  animation-name: resident-sway;
+}
+
+@keyframes resident-roam {
+  0%,
+  49% {
+    transform: translateX(calc(var(--roam-distance) * -0.3)) translateY(0) scaleX(1);
+  }
+  50% {
+    transform: translateX(calc(var(--roam-distance) * 0.2)) translateY(calc(var(--float-distance) * -1)) scaleX(1.02);
+  }
+  51% {
+    transform: translateX(calc(var(--roam-distance) * 0.2)) translateY(calc(var(--float-distance) * -1)) scaleX(-1.02);
+  }
+  100% {
+    transform: translateX(calc(var(--roam-distance) * -0.3)) translateY(0) scaleX(-1);
+  }
+}
+
+@keyframes resident-patrol {
+  0% {
+    transform: translateX(calc(-50% - var(--patrol-distance)));
+  }
+  50% {
+    transform: translateX(calc(-50% + var(--patrol-distance) * 0.2));
+  }
+  100% {
+    transform: translateX(calc(-50% + var(--patrol-distance)));
+  }
+}
+
+@keyframes dog-patrol {
+  from {
+    transform: translateX(calc(-50% - var(--patrol-distance)));
+  }
+  to {
+    transform: translateX(calc(-50% + var(--patrol-distance)));
+  }
+}
+
+@keyframes dog-walk-frames {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: calc(var(--dog-sheet-width) * -1);
+  }
+}
+
+@keyframes dog-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes dog-facing {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(-1);
+  }
+}
+
+@keyframes resident-fly {
+  0% {
+    transform: translateX(calc(var(--roam-distance) * -0.7)) translateY(calc(var(--float-distance) * -0.35)) rotate(-5deg);
+  }
+  50% {
+    transform: translateX(calc(var(--roam-distance) * 0.7)) translateY(calc(var(--float-distance) * -1.25)) rotate(4deg);
+  }
+  100% {
+    transform: translateX(calc(var(--roam-distance) * -0.5)) translateY(0) rotate(-3deg);
+  }
+}
+
+@keyframes resident-sway {
+  0%,
+  100% {
+    transform: rotate(calc(var(--sway-amount) * -1)) translateY(0);
+  }
+  50% {
+    transform: rotate(var(--sway-amount)) translateY(-2px);
+  }
+}
+
+@keyframes resident-reward-in {
+  0% {
+    transform: scale(0.4) translateY(32px);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.12) translateY(-6px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes resident-sparkle {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+  28% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes arrival-banner-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px);
+  }
+  12%,
+  72% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+.focus-world-details {
+  display: grid;
+  gap: 12px;
+}
+
+.focus-world-stats {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.focus-world-stage-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.focus-world-points {
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.focus-world-summary {
+  max-width: 340px;
+  text-align: right;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.focus-world-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.focus-world-progress-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.focus-world-progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.focus-world-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6c9e79, #89c39b);
+  transition: width 0.35s ease;
+}
+
+.focus-world-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.focus-world-book-btn {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--input-bg) 94%, transparent);
+  color: var(--text);
+  padding: 10px 14px;
+  font-family: var(--body-font);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.focus-world-book-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--text);
 }
 
 .timer {
@@ -418,7 +1100,422 @@ body {
   opacity: 0;
 }
 
+.wrap {
+  min-height: 100vh;
+  padding-bottom: clamp(230px, 30vh, 320px);
+  overflow: hidden;
+}
+
+.main-zone,
+.cards-zone {
+  position: relative;
+  z-index: 3;
+}
+
+.companion-hud {
+  padding: 16px 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(246, 244, 236, 0.68)),
+    radial-gradient(circle at top left, rgba(255, 224, 168, 0.14), transparent 38%);
+  box-shadow:
+    0 22px 42px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.companion-hud .focus-world-header {
+  align-items: center;
+}
+
+.companion-hud .focus-world-title {
+  max-width: 32ch;
+  font-size: clamp(18px, 2.4vw, 24px);
+}
+
+.companion-hud .focus-world-body {
+  margin-top: 14px;
+}
+
+.companion-hud-body {
+  max-height: 320px;
+}
+
+.companion-hud .focus-world-details {
+  display: grid;
+  gap: 14px;
+}
+
+.focus-world-book-btn {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--input-bg) 94%, transparent);
+  color: var(--text);
+  padding: 10px 14px;
+  font-family: var(--body-font);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.focus-world-book-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--text);
+}
+
+.focus-world-habitat {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(190px, 24vh, 260px);
+  overflow: visible;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.companion-habitat-scene {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.companion-habitat-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(216, 227, 201, 0.18) 42%, rgba(182, 207, 158, 0.26));
+}
+
+.companion-arrival-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: 999px;
+  background: rgba(255, 249, 239, 0.78);
+  color: #314538;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  z-index: 4;
+}
+
+.companion-arrival-pill {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(111, 149, 116, 0.12);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.companion-ground {
+  position: absolute;
+  left: -1%;
+  right: -1%;
+  bottom: -18px;
+  height: 94px;
+  border-radius: 50% 50% 0 0;
+  background: linear-gradient(180deg, rgba(129, 164, 96, 0.96), rgba(95, 131, 73, 1));
+}
+
+.companion-ground-back {
+  left: 18%;
+  right: 20%;
+  bottom: 48px;
+  height: 54px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(180deg, rgba(178, 202, 156, 0.28), rgba(147, 179, 118, 0.42));
+}
+
+.companion-ground-accent {
+  left: 20%;
+  right: 18%;
+  bottom: 14px;
+  height: 42px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(171, 196, 136, 0.48), rgba(135, 167, 102, 0.58));
+  filter: blur(5px);
+}
+
+.companion-friends {
+  position: absolute;
+  inset: 0;
+}
+
+.companion-friend {
+  position: absolute;
+  width: 76px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.companion-friend-art {
+  transform-origin: center bottom;
+}
+
+.companion-friend svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.12));
+}
+
+.companion-friend.is-recent {
+  filter: drop-shadow(0 10px 18px rgba(255, 196, 82, 0.3));
+}
+
+.companion-friend-bird {
+  width: 96px;
+  z-index: 5;
+  animation: companion-bird-drift 5.2s ease-in-out infinite;
+}
+
+.companion-friend-bird .companion-friend-art {
+  animation: companion-bird-flutter 0.9s ease-in-out infinite;
+}
+
+.companion-friend-cat .companion-friend-art,
+.companion-friend-bunny .companion-friend-art {
+  animation: companion-ground-idle 3.2s ease-in-out infinite;
+}
+
+.companion-friend-flower .companion-friend-art,
+.companion-friend-tulip .companion-friend-art,
+.companion-friend-mushroom .companion-friend-art {
+  animation: companion-plant-sway 3.8s ease-in-out infinite;
+}
+
+.companion-friend-bee {
+  width: 68px;
+  z-index: 5;
+  animation: companion-bee-drift 4s ease-in-out infinite;
+}
+
+.companion-friend-bee .companion-friend-art {
+  animation: companion-bee-buzz 0.7s linear infinite;
+}
+
+.companion-dog {
+  position: absolute;
+  left: 0;
+  bottom: 14px;
+  width: 144px;
+  height: 144px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 4;
+}
+
+.companion-dog-shadow {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 4px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(33, 47, 24, 0.24);
+  filter: blur(1px);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.companion-dog-sprite {
+  position: absolute;
+  left: 8px;
+  bottom: 12px;
+  width: 128px;
+  height: 114px;
+  background-image: url("assets/dog-walk-sprite.png");
+  background-repeat: no-repeat;
+  background-size: 600% 100%;
+  background-position: 0 0;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.16));
+  will-change: background-position, transform;
+}
+
+.companion-dog.is-facing-left .companion-dog-sprite {
+  transform: scaleX(-1);
+}
+
+.companion-dog.is-jumping .companion-dog-shadow {
+  transform: scaleX(0.82);
+  opacity: 0.55;
+}
+
+.companion-dog-bubble {
+  position: absolute;
+  left: 86px;
+  bottom: 106px;
+  min-width: 48px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.94);
+  color: #33463d;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: translateY(8px) scale(0.8);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.companion-dog-bubble.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@keyframes companion-bird-drift {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(calc(-50% - 12px), -10px);
+  }
+}
+
+@keyframes companion-bird-flutter {
+  0%,
+  100% {
+    transform: rotate(-3deg) scale(1);
+  }
+  50% {
+    transform: rotate(4deg) scale(1.03);
+  }
+}
+
+@keyframes companion-ground-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes companion-plant-sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes companion-bee-drift {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(calc(-50% + 10px), -8px);
+  }
+}
+
+@keyframes companion-bee-buzz {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
 @media (max-width: 640px) {
+  .wrap {
+    padding-bottom: 210px;
+  }
+
+  .focus-world-panel {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .focus-world-header,
+  .focus-world-stats {
+    display: grid;
+    gap: 12px;
+  }
+
+  .focus-world-summary {
+    max-width: none;
+    text-align: left;
+  }
+
+  .focus-world-scene {
+    min-height: 220px;
+  }
+
+  .companion-hud .focus-world-title {
+    max-width: none;
+  }
+
+  .focus-world-habitat {
+    height: 190px;
+  }
+
+  .companion-dog {
+    width: 118px;
+    height: 118px;
+    bottom: 10px;
+  }
+
+  .companion-dog-sprite {
+    left: 6px;
+    bottom: 10px;
+    width: 106px;
+    height: 94px;
+  }
+
+  .companion-dog-bubble {
+    left: 64px;
+    bottom: 90px;
+    font-size: 11px;
+  }
+
+  .companion-friend {
+    width: 62px;
+  }
+
+  .companion-friend-bird {
+    width: 78px;
+  }
+
+  .companion-friend-bee {
+    width: 54px;
+  }
+
+  .garden-resident {
+    width: 72px;
+  }
+
+  .resident-dog {
+    width: 92px;
+    --dog-frame-width: 92px;
+    --dog-frame-height: 82px;
+    --dog-sheet-width: 552px;
+  }
+
+  .dog-sprite {
+    margin-left: -4px;
+  }
+
+  .garden-book-grid {
+    grid-template-columns: 1fr;
+  }
+
   .settings-btn {
     right: 12px;
     bottom: 14px;
@@ -455,9 +1552,34 @@ body {
   .settings-btn,
   .pomo-toggle-btn,
   .pomo-toggle-btn svg,
+  .focus-world-toggle,
+  .focus-world-toggle svg,
+  .focus-world-body,
+  .focus-world-progress-bar,
+  .focus-world-book-btn,
+  .garden-resident,
+  .garden-resident-shell,
+  .garden-resident-motion,
+  .garden-arrival-banner,
+  .garden-resident-sparkles::before,
+  .garden-resident-sparkles::after,
   .pomo-drawer,
   .pomo-toast {
     transition: none;
+  }
+
+  .garden-resident,
+  .garden-resident-shell,
+  .garden-resident-motion,
+  .dog-sprite,
+  .companion-friend,
+  .companion-friend-art,
+  .companion-dog,
+  .companion-dog-bubble,
+  .garden-arrival-banner,
+  .garden-resident-sparkles::before,
+  .garden-resident-sparkles::after {
+    animation: none;
   }
 
   .settings-btn.attention,
@@ -1192,7 +2314,7 @@ body.has-bg-image .card {
 
 /* Floating add countdown button — above the settings button, bottom-right */
 .add-countdown-float-btn {
-  position: absolute;
+  position: fixed;
   bottom: 72px;
   right: 20px;
   display: inline-flex;

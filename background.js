@@ -4,6 +4,7 @@ importScripts("analytics.js");
 const POMODORO_STORAGE_KEY = "pomodoroState";
 const POMODORO_SETTINGS_KEY = "pomodoroSettings";
 const POMODORO_ALARM_NAME = "pomodoro-phase-end";
+const WORLD_STORAGE_KEY = "worldState";
 
 const PHASE_LABELS = {
   focus: "Focus",
@@ -18,6 +19,30 @@ const DEFAULT_SETTINGS = {
   longBreakEvery: 4,
   runIntervals: 4,
   pomodoroSoundEnabled: true
+};
+
+const GARDEN_RESIDENT_POOL = [
+  { kind: "cat", label: "Cat" },
+  { kind: "flower", label: "Flower" },
+  { kind: "bee", label: "Bee" },
+  { kind: "bunny", label: "Bunny" },
+  { kind: "tulip", label: "Tulip" },
+  { kind: "mushroom", label: "Mushroom" }
+];
+
+const WORLD_RESIDENT_KIND_MAP = {
+  dog: { kind: "cat", label: "Cat" },
+  bird: { kind: "cat", label: "Cat" }
+};
+
+const DEFAULT_WORLD_STATE = {
+  panelExpanded: true,
+  activeCountdownId: null,
+  countdownActivatedAt: null,
+  countdownTargetAt: null,
+  countdownCompletionRewarded: false,
+  spawnedResidents: [],
+  recentResidentId: null
 };
 
 function storageLocalGet(defaults) {
@@ -60,6 +85,172 @@ function clampInt(val, min, max, fallback) {
   const n = Number(val);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function clampNonNegativeInt(val, fallback = 0) {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.floor(n));
+}
+
+function normalizeTimestamp(val) {
+  return typeof val === "number" && Number.isFinite(val) && val > 0 ? Math.floor(val) : null;
+}
+
+function normalizeResident(raw, fallbackIndex = 0) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const fallback = GARDEN_RESIDENT_POOL[fallbackIndex % GARDEN_RESIDENT_POOL.length];
+  const sourceKind =
+    typeof source.kind === "string" && source.kind.trim()
+      ? source.kind.trim()
+      : fallback.kind;
+  const mappedKind = WORLD_RESIDENT_KIND_MAP[sourceKind] || null;
+  const normalizedKind = mappedKind?.kind || sourceKind;
+  const poolEntry = GARDEN_RESIDENT_POOL.find((entry) => entry.kind === normalizedKind) || fallback;
+
+  return {
+    id:
+      typeof source.id === "string" && source.id.trim()
+        ? source.id
+        : `resident-${poolEntry.kind}-${fallbackIndex}`,
+    kind: poolEntry.kind,
+    label:
+      typeof source.label === "string" && source.label.trim()
+        ? (mappedKind?.label || source.label)
+        : poolEntry.label,
+    sourceCountdownId:
+      typeof source.sourceCountdownId === "string" && source.sourceCountdownId.trim()
+        ? source.sourceCountdownId
+        : null,
+    spawnedAt: normalizeTimestamp(source.spawnedAt)
+  };
+}
+
+function normalizeResidents(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((resident, index) => normalizeResident(resident, index));
+}
+
+function getNextResidentTemplate(state) {
+  const residents = normalizeResidents(state?.spawnedResidents);
+  return GARDEN_RESIDENT_POOL[residents.length % GARDEN_RESIDENT_POOL.length];
+}
+
+function normalizeWorldState(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const spawnedResidents = normalizeResidents(source.spawnedResidents);
+  const nextResident = getNextResidentTemplate({ spawnedResidents });
+
+  return {
+    ...DEFAULT_WORLD_STATE,
+    panelExpanded: source.panelExpanded !== false,
+    activeCountdownId: typeof source.activeCountdownId === "string" ? source.activeCountdownId : null,
+    countdownActivatedAt: normalizeTimestamp(source.countdownActivatedAt),
+    countdownTargetAt: normalizeTimestamp(source.countdownTargetAt),
+    countdownCompletionRewarded: Boolean(source.countdownCompletionRewarded),
+    spawnedResidents,
+    recentResidentId:
+      typeof source.recentResidentId === "string" && source.recentResidentId.trim()
+        ? source.recentResidentId
+        : null,
+    residentCount: spawnedResidents.length,
+    nextResidentKind: nextResident.kind,
+    nextResidentLabel: nextResident.label
+  };
+}
+
+function buildWorldResponse(state) {
+  const normalized = normalizeWorldState(state);
+  return {
+    ok: true,
+    state: {
+      panelExpanded: normalized.panelExpanded,
+      activeCountdownId: normalized.activeCountdownId,
+      countdownActivatedAt: normalized.countdownActivatedAt,
+      countdownTargetAt: normalized.countdownTargetAt,
+      countdownCompletionRewarded: normalized.countdownCompletionRewarded,
+      residentCount: normalized.residentCount,
+      nextResidentKind: normalized.nextResidentKind,
+      nextResidentLabel: normalized.nextResidentLabel,
+      recentResidentId: normalized.recentResidentId,
+      spawnedResidents: normalized.spawnedResidents
+    }
+  };
+}
+
+async function getWorldState() {
+  const { [WORLD_STORAGE_KEY]: stored = null } = await storageLocalGet({
+    [WORLD_STORAGE_KEY]: null
+  });
+  return normalizeWorldState(stored);
+}
+
+async function saveWorldState(state) {
+  await storageLocalSet({ [WORLD_STORAGE_KEY]: normalizeWorldState(state) });
+}
+
+function worldStateEquals(a, b) {
+  const left = normalizeWorldState(a);
+  const right = normalizeWorldState(b);
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function spawnResident(state, now = Date.now()) {
+  const world = normalizeWorldState(state);
+  const template = getNextResidentTemplate(world);
+  const residentId = `${template.kind}-${now}`;
+
+  return normalizeWorldState({
+    ...world,
+    countdownCompletionRewarded: true,
+    recentResidentId: residentId,
+    spawnedResidents: [
+      ...world.spawnedResidents,
+      {
+        id: residentId,
+        kind: template.kind,
+        label: template.label,
+        sourceCountdownId: world.activeCountdownId,
+        spawnedAt: now
+      }
+    ]
+  });
+}
+
+function syncWorldCountdownCompletion(state, now = Date.now()) {
+  const world = normalizeWorldState(state);
+  if (!world.activeCountdownId || !world.countdownTargetAt) {
+    return normalizeWorldState({
+      ...world,
+      activeCountdownId: world.activeCountdownId,
+      countdownActivatedAt: world.activeCountdownId ? world.countdownActivatedAt : null,
+      countdownTargetAt: world.activeCountdownId ? world.countdownTargetAt : null,
+      countdownCompletionRewarded: world.activeCountdownId ? world.countdownCompletionRewarded : false
+    });
+  }
+
+  if (now < world.countdownTargetAt || world.countdownCompletionRewarded) {
+    return world;
+  }
+
+  return spawnResident(world, now);
+}
+
+async function reconcileWorldState(options = {}) {
+  const now = options.now || Date.now();
+  const current = await getWorldState();
+  const next = syncWorldCountdownCompletion(current, now);
+
+  if (!worldStateEquals(current, next)) {
+    await saveWorldState(next);
+    return next;
+  }
+
+  return next;
+}
+
+async function awardWorldForCompletedFocusPhase() {
+  return null;
 }
 
 function normalizePomodoroSettings(raw) {
@@ -226,6 +417,10 @@ async function transitionToNextPhase(state, settings, now = Date.now(), shouldNo
   const fromPhase = state.phase;
   const { nextPhase, completedFocusSessions } = getNextPhase(state, settings);
 
+  if (fromPhase === "focus") {
+    await awardWorldForCompletedFocusPhase(state, now);
+  }
+
   if (fromPhase === "focus" && completedFocusSessions >= settings.runIntervals) {
     const stoppedState = buildStoppedState(settings, "completed", now, completedFocusSessions);
     await savePomodoroState(stoppedState);
@@ -253,6 +448,7 @@ async function transitionToNextPhase(state, settings, now = Date.now(), shouldNo
 
   await savePomodoroState(nextState);
   await schedulePomodoroAlarm(nextState);
+  await reconcileWorldState({ now, pomodoroState: nextState });
   if (shouldNotify) {
     await notifyPhaseTransition(fromPhase, nextPhase);
   }
@@ -279,6 +475,8 @@ async function ensurePomodoroScheduled() {
   const settings = await getPomodoroSettings();
   const state = await getPomodoroState(settings);
   const now = Date.now();
+
+  await reconcileWorldState({ now, pomodoroState: state });
 
   if (!state.isRunning) {
     await schedulePomodoroAlarm(state);
@@ -315,9 +513,12 @@ async function handlePomodoroMessage(message) {
   const settings = await getPomodoroSettings();
   const state = await getPomodoroState(settings);
 
+  await reconcileWorldState({ now, pomodoroState: state });
+
   if (message?.type === "pomodoro:getState") {
     if (state.isRunning && state.endTimeMs && state.endTimeMs <= now) {
       const nextState = await transitionToNextPhase(state, settings, now, true);
+      await reconcileWorldState({ now, pomodoroState: nextState });
       return buildResponse(nextState, settings);
     }
     return buildResponse(state, settings);
@@ -335,6 +536,7 @@ async function handlePomodoroMessage(message) {
       };
       await savePomodoroState(paused);
       await schedulePomodoroAlarm(paused);
+      await reconcileWorldState({ now, pomodoroState: paused });
       return buildResponse(paused, settings);
     }
 
@@ -358,6 +560,7 @@ async function handlePomodoroMessage(message) {
     };
     await savePomodoroState(running);
     await schedulePomodoroAlarm(running);
+    await reconcileWorldState({ now, pomodoroState: running });
     return buildResponse(running, settings);
   }
 
@@ -368,6 +571,7 @@ async function handlePomodoroMessage(message) {
       const stoppedState = buildStoppedState(settings, "completed", now, completedFocusSessions);
       await savePomodoroState(stoppedState);
       await schedulePomodoroAlarm(stoppedState);
+      await reconcileWorldState({ now, pomodoroState: stoppedState });
       return buildResponse(stoppedState, settings);
     }
 
@@ -384,6 +588,7 @@ async function handlePomodoroMessage(message) {
     };
     await savePomodoroState(skipped);
     await schedulePomodoroAlarm(skipped);
+    await reconcileWorldState({ now, pomodoroState: skipped });
     return buildResponse(skipped, settings);
   }
 
@@ -395,6 +600,7 @@ async function handlePomodoroMessage(message) {
     };
     await savePomodoroState(resetState);
     await schedulePomodoroAlarm(resetState);
+    await reconcileWorldState({ now, pomodoroState: resetState });
     return buildResponse(resetState, settings);
   }
 
@@ -402,6 +608,7 @@ async function handlePomodoroMessage(message) {
     const stopped = buildStoppedState(settings, "manual", now, 0);
     await savePomodoroState(stopped);
     await schedulePomodoroAlarm(stopped);
+    await reconcileWorldState({ now, pomodoroState: stopped });
     return buildResponse(stopped, settings);
   }
 
@@ -434,7 +641,83 @@ async function handlePomodoroMessage(message) {
 
     await savePomodoroState(nextState);
     await schedulePomodoroAlarm(nextState);
+    await reconcileWorldState({ now, pomodoroState: nextState });
     return buildResponse(nextState, nextSettings);
+  }
+
+  return null;
+}
+
+async function handleWorldMessage(message) {
+  const now = Date.now();
+
+  if (message?.type === "world:getState") {
+    const world = await reconcileWorldState({ now });
+    return buildWorldResponse(world);
+  }
+
+  if (message?.type === "world:setPanelExpanded") {
+    const current = await reconcileWorldState({ now });
+    const next = normalizeWorldState({
+      ...current,
+      panelExpanded: message.expanded !== false
+    });
+    if (!worldStateEquals(current, next)) {
+      await saveWorldState(next);
+    }
+    return buildWorldResponse(next);
+  }
+
+  if (message?.type === "world:setActiveCountdown") {
+    const current = await reconcileWorldState({ now });
+    const countdownId = typeof message.countdownId === "string" ? message.countdownId : null;
+    const countdownTargetAt = normalizeTimestamp(message.targetTimeMs);
+
+    if (
+      current.activeCountdownId === countdownId &&
+      current.countdownTargetAt === countdownTargetAt
+    ) {
+      return buildWorldResponse(current);
+    }
+
+    const next = normalizeWorldState({
+      ...current,
+      activeCountdownId: countdownId,
+      countdownActivatedAt: countdownId && countdownTargetAt ? now : null,
+      countdownTargetAt: countdownId && countdownTargetAt ? countdownTargetAt : null,
+      countdownCompletionRewarded: false,
+      recentResidentId: current.recentResidentId
+    });
+
+    await saveWorldState(next);
+    return buildWorldResponse(next);
+  }
+
+  if (message?.type === "world:debugSpawnResident") {
+    const current = await reconcileWorldState({ now });
+    const next = spawnResident(
+      normalizeWorldState({
+        ...current,
+        activeCountdownId: current.activeCountdownId || "debug-countdown",
+        countdownCompletionRewarded: false
+      }),
+      now
+    );
+    await saveWorldState(next);
+    return buildWorldResponse(next);
+  }
+
+  if (message?.type === "world:ackRecentResident") {
+    const current = await reconcileWorldState({ now });
+    if (!current.recentResidentId || current.recentResidentId !== message.residentId) {
+      return buildWorldResponse(current);
+    }
+    const next = normalizeWorldState({
+      ...current,
+      recentResidentId: null
+    });
+    await saveWorldState(next);
+    return buildWorldResponse(next);
   }
 
   return null;
@@ -447,10 +730,12 @@ chrome.runtime.onInstalled.addListener((details) => {
     track(ANALYTICS_EVENTS.EXTENSION_UPDATED, { previous_version: details.previousVersion });
   }
   void ensurePomodoroScheduled();
+  void reconcileWorldState();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   void ensurePomodoroScheduled();
+  void reconcileWorldState();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -462,6 +747,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     const now = Date.now();
     if (!state.isRunning || !state.endTimeMs) return;
 
+     await reconcileWorldState({ now, pomodoroState: state });
+
     if (state.endTimeMs > now) {
       await schedulePomodoroAlarm(state);
       return;
@@ -472,20 +759,22 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!message?.type?.startsWith("pomodoro:")) {
+  if (!message?.type?.startsWith("pomodoro:") && !message?.type?.startsWith("world:")) {
     return false;
   }
 
   void (async () => {
     try {
-      const response = await handlePomodoroMessage(message);
+      const response = message.type.startsWith("world:")
+        ? await handleWorldMessage(message)
+        : await handlePomodoroMessage(message);
       if (response) {
         sendResponse(response);
         return;
       }
-      sendResponse({ ok: false, error: "Unknown pomodoro message" });
+      sendResponse({ ok: false, error: "Unknown worker message" });
     } catch (error) {
-      sendResponse({ ok: false, error: error?.message || "Pomodoro worker error" });
+      sendResponse({ ok: false, error: error?.message || "Worker error" });
     }
   })();
 

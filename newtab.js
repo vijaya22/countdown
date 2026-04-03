@@ -20,6 +20,21 @@ const mm = $("mm");
 const ss = $("ss");
 const targetText = $("targetText");
 const statusText = $("statusText");
+const focusWorldPanel = $("focusWorldPanel");
+const focusWorldBody = $("focusWorldBody");
+const focusWorldToggleBtn = $("focusWorldToggleBtn");
+const focusWorldToggleLabel = $("focusWorldToggleLabel");
+const focusWorldStageLabel = $("focusWorldStageLabel");
+const focusWorldPoints = $("focusWorldPoints");
+const focusWorldSummary = $("focusWorldSummary");
+const focusWorldProgressValue = $("focusWorldProgressValue");
+const focusWorldProgressBar = $("focusWorldProgressBar");
+const gardenBookBtn = $("gardenBookBtn");
+const gardenBookModal = $("gardenBookModal");
+const gardenBookSummary = $("gardenBookSummary");
+const gardenBookNext = $("gardenBookNext");
+const gardenBookGrid = $("gardenBookGrid");
+const gardenBookCloseBtn = $("gardenBookCloseBtn");
 const pomoMm = $("pomoMm");
 const pomoSs = $("pomoSs");
 const pomoPhase = $("pomoPhase");
@@ -53,6 +68,7 @@ const settingsModal = $("settingsModal");
 const settingsBtn = $("settingsBtn");
 const settingsProBadge = $("settingsProBadge");
 const soundToggle = $("soundToggle");
+const companionToggle = $("companionToggle");
 const fontSection = $("fontSection");
 const fontLock = $("fontLock");
 const clockFontSelect = $("clockFontSelect");
@@ -123,6 +139,16 @@ const DEFAULT_POMODORO_SETTINGS = {
   pomodoroSoundEnabled: true
 };
 
+const GARDEN_COLLECTION_SIZE = 6;
+const GARDEN_RESIDENT_CATALOG = [
+  { kind: "cat", label: "Cat" },
+  { kind: "flower", label: "Flower" },
+  { kind: "bee", label: "Bee" },
+  { kind: "bunny", label: "Bunny" },
+  { kind: "tulip", label: "Tulip" },
+  { kind: "mushroom", label: "Mushroom" }
+];
+
 function getPomodoroRemainingMs(pomodoroState) {
   if (!pomodoroState) return 0;
   if (pomodoroState.isRunning && pomodoroState.endTimeMs) {
@@ -164,12 +190,121 @@ function renderPomodoro(pomodoroState, pomodoroSettings = DEFAULT_POMODORO_SETTI
   pomoStartPauseBtn.textContent = pomodoroState.isRunning ? "Pause" : "Start";
 }
 
-async function sendPomodoroMessage(type, payload = {}) {
+async function sendRuntimeMessage(type, payload = {}) {
   try {
     return await chrome.runtime.sendMessage({ type, ...payload });
   } catch (e) {
     return { ok: false, error: e?.message || "Unable to contact background worker" };
   }
+}
+
+async function sendPomodoroMessage(type, payload = {}) {
+  return sendRuntimeMessage(type, payload);
+}
+
+async function sendWorldMessage(type, payload = {}) {
+  return sendRuntimeMessage(type, payload);
+}
+
+function emitFocusWorldState(worldState) {
+  window.dispatchEvent(new CustomEvent("focusworld:update", { detail: worldState }));
+}
+
+function emitFocusWorldTheme() {
+  window.dispatchEvent(new CustomEvent("focusworld:theme"));
+}
+
+function emitFocusWorldEnabled(enabled) {
+  window.dispatchEvent(new CustomEvent("focusworld:enabled", { detail: { enabled: Boolean(enabled) } }));
+}
+
+function normalizeWorldState(worldState) {
+  return {
+    panelExpanded: worldState?.panelExpanded !== false,
+    residentCount: Number(worldState?.residentCount || 0),
+    nextResidentKind: worldState?.nextResidentKind || "cat",
+    nextResidentLabel: worldState?.nextResidentLabel || "Cat",
+    recentResidentId: worldState?.recentResidentId || null,
+    spawnedResidents: Array.isArray(worldState?.spawnedResidents) ? worldState.spawnedResidents : []
+  };
+}
+
+function buildGardenBook(worldState) {
+  if (!gardenBookGrid || !gardenBookSummary || !gardenBookNext) return;
+
+  const residentsByKind = new Map(
+    normalizeWorldState(worldState).spawnedResidents.map((resident) => [resident.kind, resident])
+  );
+
+  gardenBookSummary.textContent = `${worldState.residentCount} of ${GARDEN_COLLECTION_SIZE} friends arrived`;
+  gardenBookNext.textContent = `Next friend: ${worldState.nextResidentLabel}`;
+  gardenBookGrid.innerHTML = "";
+
+  GARDEN_RESIDENT_CATALOG.forEach((entry) => {
+    const unlocked = residentsByKind.has(entry.kind);
+    const card = document.createElement("div");
+    card.className = `garden-book-entry${unlocked ? " unlocked" : ""}`;
+    card.innerHTML = `
+      <div class="garden-book-icon">${unlocked ? entry.label.slice(0, 1) : "?"}</div>
+      <div class="garden-book-label">${entry.label}</div>
+      <div class="garden-book-status">${unlocked ? "Joined the page" : "Not yet"}</div>
+    `;
+    gardenBookGrid.appendChild(card);
+  });
+}
+
+function setFocusWorldPanelExpanded(expanded) {
+  const isExpanded = Boolean(expanded);
+  focusWorldPanel?.classList.toggle("collapsed", !isExpanded);
+  if (focusWorldBody) {
+    focusWorldBody.hidden = !isExpanded;
+  }
+  focusWorldBody?.setAttribute("aria-hidden", String(!isExpanded));
+  focusWorldToggleBtn?.setAttribute("aria-expanded", String(isExpanded));
+  if (focusWorldToggleLabel) {
+    focusWorldToggleLabel.textContent = isExpanded ? "Hide details" : "Show details";
+  }
+}
+
+function renderFocusWorld(worldState) {
+  const state = normalizeWorldState(worldState);
+  const gardenProgress = Math.min(1, state.residentCount / GARDEN_COLLECTION_SIZE);
+  const latestResident = state.spawnedResidents[state.spawnedResidents.length - 1] || null;
+  if (focusWorldStageLabel) {
+    focusWorldStageLabel.textContent = "Dog's friends";
+  }
+  if (focusWorldPoints) {
+    focusWorldPoints.textContent = `${state.residentCount} friend${state.residentCount === 1 ? "" : "s"}`;
+  }
+  if (focusWorldSummary) {
+    focusWorldSummary.textContent = latestResident
+      ? `${latestResident.label} joined your dog. Next friend: ${state.nextResidentLabel}.`
+      : `Complete a countdown to bring ${state.nextResidentLabel} to the page.`;
+  }
+  if (focusWorldProgressValue) {
+    focusWorldProgressValue.textContent = `${state.residentCount} / ${GARDEN_COLLECTION_SIZE}`;
+  }
+  if (focusWorldProgressBar) {
+    const progressWidth = state.residentCount > 0 ? Math.max(8, gardenProgress * 100) : 0;
+    focusWorldProgressBar.style.width = `${progressWidth}%`;
+  }
+  setFocusWorldPanelExpanded(state.panelExpanded);
+  buildGardenBook(state);
+  if (state.recentResidentId && state.recentResidentId !== lastGardenCelebrationId) {
+    lastGardenCelebrationId = state.recentResidentId;
+    try {
+      playGardenArrivalSound();
+    } catch (error) {
+      console.error("Garden arrival sound failed:", error);
+    }
+    if (gardenCelebrationAckTimer) {
+      clearTimeout(gardenCelebrationAckTimer);
+    }
+    gardenCelebrationAckTimer = setTimeout(() => {
+      void sendWorldMessage("world:ackRecentResident", { residentId: state.recentResidentId }).catch(() => {});
+    }, 4300);
+  }
+  emitFocusWorldState(state);
 }
 
 // =============================================================================
@@ -419,6 +554,15 @@ async function setSoundEnabled(val) {
   await chrome.storage.sync.set({ soundEnabled: val });
 }
 
+async function getCompanionEnabled() {
+  const { companionEnabled = true } = await chrome.storage.sync.get({ companionEnabled: true });
+  return companionEnabled;
+}
+
+async function setCompanionEnabled(val) {
+  await chrome.storage.sync.set({ companionEnabled: Boolean(val) });
+}
+
 function normalizeFontId(id) {
   return FONT_PRESETS[id] ? id : "default";
 }
@@ -533,6 +677,8 @@ function applyBackgroundImage(imageData) {
  * Plays a two-beep alert sound using Web Audio API
  */
 let sharedAudioCtx = null;
+let lastGardenCelebrationId = null;
+let gardenCelebrationAckTimer = null;
 
 function getAudioContext() {
   if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
@@ -570,6 +716,34 @@ function playAlertSound() {
 
     oscillator.start(startAt + delay);
     oscillator.stop(startAt + delay + 0.15);
+  });
+}
+
+function playGardenArrivalSound() {
+  const audioCtx = getAudioContext();
+  const startAt = audioCtx.currentTime;
+  const notes = [
+    { frequency: 523.25, duration: 0.14, delay: 0 },
+    { frequency: 659.25, duration: 0.16, delay: 0.12 },
+    { frequency: 783.99, duration: 0.22, delay: 0.24 }
+  ];
+
+  notes.forEach(({ frequency, duration, delay }, index) => {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.frequency.value = frequency;
+    oscillator.type = index === 2 ? "triangle" : "sine";
+    gainNode.gain.setValueAtTime(0.001, startAt + delay);
+    gainNode.gain.exponentialRampToValueAtTime(0.16, startAt + delay + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, startAt + delay + duration);
+    oscillator.start(startAt + delay);
+    oscillator.stop(startAt + delay + duration);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
   });
 }
 
@@ -658,6 +832,7 @@ async function init() {
 
   // Load global settings
   let soundEnabled = await getSoundEnabled();
+  let companionEnabled = await getCompanionEnabled();
   let soundPlayedFor = await getSoundPlayedFor();
   let premium = await isPremium();
 
@@ -675,10 +850,14 @@ async function init() {
   let pomodoroToastCleanupTimer = null;
   let hasPlayedSettingsAttention = false;
   let settingsAttentionTimer = null;
+  let focusWorldState = normalizeWorldState();
+  let lastCompletedCountdownWorldRefreshAt = 0;
 
   // Apply theme immediately
   applyTheme(themeId, customTheme);
   applyFontPreferences(clockFontId, textFontId, premium);
+  renderFocusWorld(focusWorldState);
+  emitFocusWorldEnabled(companionEnabled);
 
   // Apply background image if set
   if (bgImage) {
@@ -687,6 +866,29 @@ async function init() {
 
   // Display target date
   targetText.textContent = `Target: ${formatLocal(targetDate)}`;
+
+  async function refreshWorldState() {
+    const response = await sendWorldMessage("world:getState");
+    if (response?.ok && response.state) {
+      focusWorldState = normalizeWorldState(response.state);
+      renderFocusWorld(focusWorldState);
+    } else if (response?.error) {
+      console.error("World state fetch failed:", response.error);
+    }
+  }
+
+  async function syncWorldActiveCountdown() {
+    const response = await sendWorldMessage("world:setActiveCountdown", {
+      countdownId: mainCountdown?.id || null,
+      targetTimeMs: targetDate?.getTime?.() || null
+    });
+    if (response?.ok && response.state) {
+      focusWorldState = normalizeWorldState(response.state);
+      renderFocusWorld(focusWorldState);
+    } else if (response?.error) {
+      console.error("Focus World countdown sync failed:", response.error);
+    }
+  }
 
   function setPomodoroDrawerOpen(nextOpen) {
     isPomodoroDrawerOpen = Boolean(nextOpen);
@@ -860,7 +1062,14 @@ async function init() {
     }
   }
 
+  window.addEventListener("focusworld:ready", () => {
+    renderFocusWorld(focusWorldState);
+    emitFocusWorldEnabled(companionEnabled);
+    emitFocusWorldTheme();
+  });
+
   await refreshPomodoroState(false);
+  await syncWorldActiveCountdown();
   setPomodoroDrawerOpen(false);
   setPomodoroSetupOpen(false);
 
@@ -874,10 +1083,22 @@ async function init() {
       void setSoundPlayedFor(isoLocal).catch((e) => {
         console.error("Failed to persist soundPlayedFor:", e);
       });
+      void refreshWorldState();
+    }
+
+    if (targetDate.getTime() <= Date.now()) {
+      const now = Date.now();
+      if (now - lastCompletedCountdownWorldRefreshAt > 3000) {
+        lastCompletedCountdownWorldRefreshAt = now;
+        void refreshWorldState();
+      }
     }
   };
   tick();
   setInterval(tick, 250);
+  setInterval(() => {
+    void refreshWorldState();
+  }, 10000);
 
   // Keep UI in sync when background worker updates Pomodoro state or countdowns change.
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -889,10 +1110,16 @@ async function init() {
       if (changes.pomodoroState?.newValue) {
         applyPomodoroState(changes.pomodoroState.newValue, true);
       }
+      if (changes.worldState?.newValue) {
+        focusWorldState = normalizeWorldState(changes.worldState.newValue);
+        renderFocusWorld(focusWorldState);
+      }
     }
     if (areaName === "sync" && changes.countdowns?.newValue) {
       const updated = changes.countdowns.newValue;
       if (!updated) return;
+      const prevMainId = mainCountdown.id;
+      const prevMainTarget = mainCountdown.targetIsoLocal;
       countdowns = updated;
       const newMain = getMainCountdown(countdowns);
       if (newMain.id !== mainCountdown.id || newMain.targetIsoLocal !== mainCountdown.targetIsoLocal) {
@@ -906,9 +1133,55 @@ async function init() {
         applyTheme(themeId, customTheme);
         applyFontPreferences(clockFontId, textFontId, premium);
         targetText.textContent = `Target: ${formatLocal(targetDate)}`;
+        emitFocusWorldTheme();
+      }
+      if (newMain.id !== prevMainId || newMain.targetIsoLocal !== prevMainTarget) {
+        void syncWorldActiveCountdown();
       }
       renderCardGrid();
       updateLayoutMode();
+    }
+    if (areaName === "sync" && changes.companionEnabled) {
+      companionEnabled = changes.companionEnabled.newValue !== false;
+      if (companionToggle) {
+        companionToggle.checked = companionEnabled;
+      }
+      emitFocusWorldEnabled(companionEnabled);
+    }
+  });
+
+  focusWorldToggleBtn?.addEventListener("click", async () => {
+    const nextExpanded = !focusWorldState.panelExpanded;
+    focusWorldState = {
+      ...focusWorldState,
+      panelExpanded: nextExpanded
+    };
+    setFocusWorldPanelExpanded(nextExpanded);
+
+    const response = await sendWorldMessage("world:setPanelExpanded", {
+      expanded: nextExpanded
+    });
+    if (response?.ok && response.state) {
+      focusWorldState = normalizeWorldState(response.state);
+      renderFocusWorld(focusWorldState);
+    } else {
+      if (response?.error) {
+        console.error("Failed to persist Focus World panel state:", response.error);
+      }
+    }
+  });
+
+  gardenBookBtn?.addEventListener("click", () => {
+    gardenBookModal?.classList.remove("hidden");
+  });
+
+  gardenBookCloseBtn?.addEventListener("click", () => {
+    gardenBookModal?.classList.add("hidden");
+  });
+
+  gardenBookModal?.addEventListener("click", (event) => {
+    if (event.target === gardenBookModal) {
+      gardenBookModal.classList.add("hidden");
     }
   });
 
@@ -1047,6 +1320,7 @@ async function init() {
       await saveCountdowns(countdowns);
       targetDate = isoLocalToDate(isoLocal);
       targetText.textContent = `Target: ${formatLocal(targetDate)}`;
+      await syncWorldActiveCountdown();
       const daysUntil = Math.ceil((targetDate - new Date()) / 86400000);
       track(ANALYTICS_EVENTS.COUNTDOWN_SET, { days_until_target: daysUntil });
     }
@@ -1197,6 +1471,9 @@ async function init() {
   settingsBtn.addEventListener("click", async () => {
     track(ANALYTICS_EVENTS.SETTINGS_OPENED);
     soundToggle.checked = soundEnabled;
+    if (companionToggle) {
+      companionToggle.checked = companionEnabled;
+    }
     // Refresh premium status from storage
     premium = await isPremium();
     updatePremiumUI();
@@ -1212,6 +1489,12 @@ async function init() {
     soundEnabled = soundToggle.checked;
     await setSoundEnabled(soundEnabled);
     track(ANALYTICS_EVENTS.SOUND_TOGGLED, { enabled: soundEnabled });
+  });
+
+  companionToggle?.addEventListener("change", async () => {
+    companionEnabled = companionToggle.checked;
+    await setCompanionEnabled(companionEnabled);
+    emitFocusWorldEnabled(companionEnabled);
   });
 
   clockFontSelect?.addEventListener("change", async () => {
@@ -1269,6 +1552,7 @@ async function init() {
       mainCountdown.themeId = themeId;
       await saveCountdowns(countdowns);
       applyTheme(themeId, customTheme);
+      emitFocusWorldTheme();
       updatePremiumUI();
       track(ANALYTICS_EVENTS.THEME_CHANGED, { theme_id: themeId });
     });
@@ -1286,6 +1570,7 @@ async function init() {
     mainCountdown.customColors = customTheme;
     await saveCountdowns(countdowns);
     applyTheme('custom', customTheme);
+    emitFocusWorldTheme();
     updateCustomPreview();
   }
 
@@ -1572,9 +1857,25 @@ async function init() {
 
   // Escape to close any open modal
   window.addEventListener("keydown", (e) => {
+    if (e.shiftKey && e.key.toLowerCase() === "g") {
+      void (async () => {
+        const response = await sendWorldMessage("world:debugSpawnResident");
+        if (response?.ok && response.state) {
+          focusWorldState = normalizeWorldState(response.state);
+          renderFocusWorld(focusWorldState);
+        } else if (response?.error) {
+          console.error("Failed to spawn debug garden resident:", response.error);
+        }
+      })();
+      return;
+    }
+
     if (e.key === "Escape") {
       if (!dateModal.classList.contains("hidden")) saveDateAndClose();
       if (!settingsModal.classList.contains("hidden")) closeSettingsModal();
+      if (gardenBookModal && !gardenBookModal.classList.contains("hidden")) {
+        gardenBookModal.classList.add("hidden");
+      }
       if (isPomodoroDrawerOpen) setPomodoroDrawerOpen(false);
       if (licenseModal && !licenseModal.classList.contains("hidden")) {
         licenseModal.classList.add("hidden");
@@ -1689,7 +1990,9 @@ async function init() {
     applyFontPreferences(clockFontId, textFontId, premium);
     applyBackgroundImage(bgImage);
     targetText.textContent = `Target: ${formatLocal(targetDate)}`;
+    emitFocusWorldTheme();
     await saveCountdowns(countdowns);
+    await syncWorldActiveCountdown();
     updateLayoutMode();
     renderCardGrid();
     track(ANALYTICS_EVENTS.COUNTDOWN_SET_MAIN);
